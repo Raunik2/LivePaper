@@ -43,9 +43,14 @@ class VideoWallpaperView: NSView {
         playerLayer.videoGravity = .resizeAspectFill
         playerLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
         playerLayer.drawsAsynchronously = true
+        playerLayer.minificationFilter = .trilinear
+        playerLayer.magnificationFilter = .linear
 
         wantsLayer = true
         layer = playerLayer
+        // Render at native Retina resolution (2x) — without this, 4K looks like 1080p
+        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+        playerLayer.contentsScale = scale
         player.play()
     }
 
@@ -99,9 +104,18 @@ class VideoWallpaperView: NSView {
         }
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let screen = window?.screen ?? NSScreen.main else { return }
+        playerLayer?.contentsScale = screen.backingScaleFactor
+    }
+
     override func resize(withOldSuperviewSize oldSize: NSSize) {
         super.resize(withOldSuperviewSize: oldSize)
         playerLayer?.frame = bounds
+        if let scale = window?.screen?.backingScaleFactor {
+            playerLayer?.contentsScale = scale
+        }
     }
 }
 
