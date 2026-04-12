@@ -113,6 +113,12 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
             ) { [weak self] _ in self?.handleOcclusionChange() }
             occlusionObservers.append(obs)
         }
+        // Re-apply battery mode to the freshly created views
+        if pausedForBattery {
+            for v in videoViews { v.pause() }
+        } else if batteryMonitor?.isOnBattery == true {
+            for v in videoViews { v.setBatteryMode(true) }
+        }
     }
 
     func setupClock() {
@@ -212,7 +218,11 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
     func pause() { isPaused = true; for v in videoViews { v.pause() } }
     func resume() {
         isPaused = false
-        if pausedForBattery { return }
+        if pausedForBattery {
+            // Screensaver's forceResume() may have left players running — re-pause
+            for v in videoViews { v.pause() }
+            return
+        }
         for v in videoViews { v.resume() }
     }
 
