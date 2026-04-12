@@ -1,0 +1,19 @@
+# Build artifacts
+LivePaper.app/
+LivePaper.dmg
+dmg-staging/
+
+# macOS junk
+.DS_Store
+._*
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+build/
+DerivedData/
+
+# Editor
+*.swp
+*.swo
+*~
