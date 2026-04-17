@@ -1,7 +1,6 @@
 // LivePaper – Main Application Delegate
 
 import AppKit
-import IOKit.pwr_mgt
 
 class LivePaperApp: NSObject, NSApplicationDelegate {
     var wallpaperWindows: [WallpaperWindow] = []
@@ -22,6 +21,7 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
     var batteryMonitor: BatteryMonitor?
     private var pausedForBattery = false
     private let aerialsInjector = AerialsInjector()
+    private var activityToken: NSObjectProtocol?
 
     private var hasVideo: Bool
 
@@ -177,8 +177,6 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
     @objc func displayDidWake() {
         displaySleeping = false
         NSLog("LivePaper: Display woke up — scheduling recovery")
-        screensaverController?.completePendingLockActivation()
-
         // Give the GPU a moment to come back after display sleep
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self = self else { return }
@@ -240,21 +238,37 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
         for v in videoViews { v.fullRebuild(url: url) }
     }
 
-    func pause() { isPaused = true; for v in videoViews { v.pause() } }
+    func pause() {
+        isPaused = true
+        for v in videoViews { v.pause() }
+        if let token = activityToken {
+            ProcessInfo.processInfo.endActivity(token)
+            activityToken = nil
+        }
+    }
     func resume() {
         isPaused = false
         if pausedForBattery {
-            // Screensaver's forceResume() may have left players running — re-pause
             for v in videoViews { v.pause() }
             return
         }
         for v in videoViews { v.resume() }
+        if activityToken == nil {
+            activityToken = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiated, .idleSystemSleepDisabled],
+                reason: "LivePaper video wallpaper playback")
+        }
     }
 
     func enterBatteryMode() {
         if LivePaperConfig.shared.pauseOnBattery {
             pausedForBattery = true
             if !isPaused { for v in videoViews { v.pause() } }
+            // Allow App Nap when paused on battery
+            if let token = activityToken {
+                ProcessInfo.processInfo.endActivity(token)
+                activityToken = nil
+            }
             NSLog("LivePaper: Battery mode — paused video")
         } else {
             for v in videoViews { v.setBatteryMode(true) }
@@ -264,11 +278,18 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
     func exitBatteryMode() {
         pausedForBattery = false
         for v in videoViews { v.setBatteryMode(false) }
-        if !isPaused { for v in videoViews { v.resume() } }
+        if !isPaused {
+            for v in videoViews { v.resume() }
+            // Prevent App Nap on AC while playing
+            if activityToken == nil {
+                activityToken = ProcessInfo.processInfo.beginActivity(
+                    options: [.userInitiated, .idleSystemSleepDisabled],
+                    reason: "LivePaper video wallpaper playback")
+            }
+        }
         NSLog("LivePaper: AC power — full quality")
     }
     func setVolume(_ vol: Float) {
-        LivePaperConfig.shared.volume = vol
         for v in videoViews { v.setVolume(vol) }
     }
 

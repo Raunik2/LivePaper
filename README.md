@@ -26,11 +26,12 @@ git clone https://github.com/Raunik2/LivePaper.git && cd LivePaper && bash build
 
 - **Live Video Wallpaper** — Any MP4/MOV/M4V as desktop background with seamless looping
 - **Mond Clock Widget** — Elegant Anurati-font clock overlay with 3 styles (Classic, Classic + Seconds, Small)
-- **Lock Screen & Screensaver** — Video automatically overlays the lock screen and system screensaver
+- **Lock Screen & Screensaver** — Video plays on lock screen via native macOS aerial injection
 - **System Aerial Injection** — Registers your video as a native macOS aerial in System Settings
+- **YouTube Download** — Paste a YouTube URL to download and import wallpapers directly
 - **Video Library** — Browse and switch between videos from `~/Movies/LivePaper/`
 - **Multi-Monitor** — Works across all connected displays
-- **Battery Optimized** — Auto-lowers resolution on battery; optional full pause on battery
+- **Battery Optimized** — Lowers resolution + scale on battery; skips lock-screen sleep prevention; optional full pause
 - **Smart Pausing** — Auto-pauses when desktop is occluded or display sleeps
 - **Menu Bar + CLI** — Control from the status bar or via pipe commands
 - **GUI Dashboard** — Modern SwiftUI control panel
@@ -48,9 +49,10 @@ Double-click LivePaper.app — the dashboard opens and the wallpaper starts.
 
 ### Getting Videos
 
-1. Download animated wallpapers from [moewalls.com](https://moewalls.com/)
-2. Drop `.mp4`/`.mov` files into `~/Movies/LivePaper/`
-3. Or use **Choose Video File** in the dashboard
+1. **YouTube** — Paste a URL in the dashboard to download directly (requires `yt-dlp`)
+2. **moewalls.com** — Click "Browse moewalls.com" in the dashboard for animated wallpapers
+3. **Local files** — Drop `.mp4`/`.mov` files into `~/Movies/LivePaper/`
+4. **Choose Video File** — Pick any video from the dashboard; it's auto-converted to HEVC
 
 ### CLI Control
 
@@ -77,8 +79,8 @@ open /Applications/LivePaper.app --args --video ~/Movies/LivePaper/my-wallpaper.
 | **Video Playback** | `AVQueuePlayer` + `AVPlayerLooper` with hardware-accelerated `AVPlayerLayer` |
 | **Desktop Level** | Wallpaper windows at `desktopWindow + 1` — above real wallpaper, below everything else |
 | **Aerial Injection** | Writes to `~/Library/Application Support/com.apple.wallpaper/aerials/` to register as native aerial |
-| **Lock Screen** | Elevates windows above `CGShieldingWindowLevel` when screen locks |
-| **Battery Mode** | Caps decode at 1080p + 5 Mbps on battery; optional full pause |
+| **Lock Screen** | Hides wallpaper windows on lock; system aerials (with injected video) plays natively |
+| **Battery Mode** | Caps decode at 1080p/5 Mbps, renders at 1x scale on battery; sleep prevention only on AC |
 | **Occlusion Pause** | Monitors `NSWindow.didChangeOcclusionStateNotification` to stop decode when hidden |
 
 ## Project Structure

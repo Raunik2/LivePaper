@@ -100,7 +100,8 @@ if [ -d "$SCRIPT_DIR/Sources" ]; then
 else
     TMP_DIR=$(mktemp -d)
     trap "rm -rf $TMP_DIR" EXIT
-    git clone --depth 1 https://github.com/Raunik2/LivePaper.git "$TMP_DIR/LivePaper" 2>/dev/null
+    git clone --depth 1 --filter=blob:none --no-checkout https://github.com/Raunik2/LivePaper.git "$TMP_DIR/LivePaper" 2>/dev/null
+    (cd "$TMP_DIR/LivePaper" && git checkout HEAD -- Sources/ LICENSE Fonts/ AppIcon.icns Videos/ 2>/dev/null) || true
     show_progress 3 "Downloading sample videos..."
     (cd "$TMP_DIR/LivePaper" && git lfs pull 2>/dev/null) || true
     SRC_DIR="$TMP_DIR/LivePaper"
@@ -121,6 +122,7 @@ swiftc Sources/*.swift -o "$APP/Contents/MacOS/LivePaper" \
   -framework AppKit -framework AVFoundation -framework CoreMedia \
   -framework CoreGraphics -framework QuartzCore -framework CoreText \
   -framework IOKit \
+  -Osize \
   -target arm64-apple-macosx15.0
 show_progress 5 "Build complete"
 finish_step "Build complete"

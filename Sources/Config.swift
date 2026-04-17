@@ -37,10 +37,6 @@ class LivePaperConfig {
         get { d.integer(forKey: p + "clockStyle") }
         set { d.set(newValue, forKey: p + "clockStyle") }
     }
-    var screensaverEnabled: Bool {
-        get { d.object(forKey: p + "ssOn") as? Bool ?? true }
-        set { d.set(newValue, forKey: p + "ssOn") }
-    }
     var volume: Float {
         get {
             let key = p + "volume"

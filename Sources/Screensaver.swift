@@ -421,11 +421,6 @@ class ScreensaverController {
         reraiseWindows()
     }
 
-    func completePendingLockActivation() {
-        // After display wake: if we were locked, show wallpaper windows
-        // since displayDidWake fires before screenUnlocked
-    }
-
     // MARK: - Dismiss (for screensaver → normal transition)
 
     func dismiss() {

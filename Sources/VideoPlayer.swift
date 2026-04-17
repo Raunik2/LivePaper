@@ -146,6 +146,7 @@ class VideoWallpaperView: NSView {
 
     func setVolume(_ vol: Float) {
         let v = max(0, min(1, vol))
+        volume = v
         player.volume = v; player.isMuted = (v == 0)
     }
     func pause() { player.pause() }
@@ -154,9 +155,13 @@ class VideoWallpaperView: NSView {
         if on {
             player.currentItem?.preferredMaximumResolution = CGSize(width: 1920, height: 1080)
             player.currentItem?.preferredPeakBitRate = 5_000_000
+            // Render at 1x scale on battery — 4x fewer pixels to composite
+            playerLayer.contentsScale = 1.0
         } else {
             player.currentItem?.preferredMaximumResolution = .zero
             player.currentItem?.preferredPeakBitRate = 0
+            let scale = window?.screen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
+            playerLayer.contentsScale = scale
         }
     }
 

@@ -4,7 +4,6 @@
 
 import SwiftUI
 import AppKit
-import AVFoundation
 
 // MARK: - Accent Colors (SwiftUI)
 
@@ -14,12 +13,6 @@ private let mutedGray    = Color(white: 0.50)
 private let cardBg       = Color(white: 0.15)
 private let dashBg       = Color(red: 0.11, green: 0.11, blue: 0.14)
 
-// Keep DashAccent for backward compat (used in other files if needed)
-struct DashAccent {
-    static let purple   = NSColor(calibratedRed: 0.56, green: 0.40, blue: 1.00, alpha: 1)
-    static let cyan     = NSColor(calibratedRed: 0.25, green: 0.88, blue: 0.82, alpha: 1)
-}
-
 // MARK: - Observable State
 
 class DashboardState: ObservableObject {
@@ -27,7 +20,6 @@ class DashboardState: ObservableObject {
     @Published var thumbImage: NSImage? = nil
     @Published var isPaused: Bool = false
     @Published var volume: Double = 0
-    @Published var screensaverEnabled: Bool = true
     @Published var clockEnabled: Bool = true
     @Published var clockStyle: Int = 0
     @Published var lockScreenEnabled: Bool = true
@@ -48,7 +40,6 @@ class DashboardState: ObservableObject {
         videoName = app.currentVideoName
         isPaused = app.isPaused
         volume = Double(LivePaperConfig.shared.volume) * 100
-        screensaverEnabled = LivePaperConfig.shared.screensaverEnabled
         clockEnabled = app.clockEnabled
         clockStyle = LivePaperConfig.shared.clockStyle
         lockScreenEnabled = LivePaperConfig.shared.lockScreenEnabled
@@ -711,7 +702,6 @@ class DashboardController: NSObject, NSWindowDelegate {
             }
             let finalURL = URL(fileURLWithPath: destPath)
             app?.changeVideo(url: finalURL)
-            LivePaperConfig.shared.wallpaperVideoPath = finalURL.path
             state.isDownloading = false
             state.downloadStatus = ""
             state.refresh()
@@ -826,7 +816,6 @@ class DashboardController: NSObject, NSWindowDelegate {
                 // Regenerate thumbnail for the processed video
                 VideoLibrary.shared.invalidateThumbnail(for: finalURL)
                 self?.app?.changeVideo(url: finalURL)
-                LivePaperConfig.shared.wallpaperVideoPath = finalURL.path
                 self?.state.refresh()
             }
         }
@@ -844,7 +833,6 @@ class DashboardController: NSObject, NSWindowDelegate {
             processAndImportVideo(sourceURL: url)
         } else {
             app?.changeVideo(url: url)
-            LivePaperConfig.shared.wallpaperVideoPath = url.path
             state.refresh()
         }
     }
@@ -908,7 +896,7 @@ class DashboardController: NSObject, NSWindowDelegate {
                 "--merge-output-format", "mp4",
                 "-o", (libraryPath as NSString).appendingPathComponent("%(title)s.%(ext)s"),
                 "--no-playlist",
-                "--concurrent-fragments", "4",
+                "--concurrent-fragments", "8",
                 "--progress",
                 "--newline",
                 urlString

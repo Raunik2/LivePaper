@@ -13,6 +13,7 @@ swiftc Sources/*.swift -o "$APP/Contents/MacOS/LivePaper" \
   -framework AppKit -framework AVFoundation -framework CoreMedia \
   -framework CoreGraphics -framework QuartzCore -framework CoreText \
   -framework IOKit \
+  -Osize \
   -target arm64-apple-macosx15.0
 
 # Bundle font
