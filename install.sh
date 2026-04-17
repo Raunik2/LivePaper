@@ -61,7 +61,9 @@ swiftc Sources/*.swift -o "$APP/Contents/MacOS/LivePaper" \
   -target arm64-apple-macosx15.0 2>/dev/null
 
 # Bundle font
-if [ -f "$HOME/Library/Fonts/Anurati-Regular.otf" ]; then
+if [ -f "Fonts/Anurati-Regular.otf" ]; then
+  cp "Fonts/Anurati-Regular.otf" "$APP/Contents/Resources/"
+elif [ -f "$HOME/Library/Fonts/Anurati-Regular.otf" ]; then
   cp "$HOME/Library/Fonts/Anurati-Regular.otf" "$APP/Contents/Resources/"
 fi
 
