@@ -230,8 +230,15 @@ class VideoWallpaperView: NSView {
         gen.requestedTimeToleranceBefore = .zero
         gen.requestedTimeToleranceAfter = CMTime(seconds: 0.5, preferredTimescale: 600)
         let time = player.currentTime()
-        guard let cgImage = try? gen.copyCGImage(at: time, actualTime: nil) else { return nil }
-        return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+        let semaphore = DispatchSemaphore(value: 0)
+        var result: NSImage?
+        gen.generateCGImageAsynchronously(for: time) { cgImage, _, _ in
+            defer { semaphore.signal() }
+            guard let cgImage = cgImage else { return }
+            result = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+        }
+        semaphore.wait()
+        return result
     }
 
     /// Check if the player is actually producing visible frames

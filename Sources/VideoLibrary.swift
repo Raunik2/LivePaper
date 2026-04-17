@@ -64,12 +64,19 @@ class VideoLibrary {
         gen.appliesPreferredTrackTransform = true
         gen.maximumSize = size
         let time = CMTime(seconds: 1.0, preferredTimescale: 600)
-        guard let cgImage = try? gen.copyCGImage(at: time, actualTime: nil) else { return nil }
-        let rep = NSBitmapImageRep(cgImage: cgImage)
-        if let pngData = rep.representation(using: .png, properties: [:]) {
-            try? pngData.write(to: URL(fileURLWithPath: thumbPath))
+        let semaphore = DispatchSemaphore(value: 0)
+        var result: NSImage?
+        gen.generateCGImageAsynchronously(for: time) { cgImage, _, _ in
+            defer { semaphore.signal() }
+            guard let cgImage = cgImage else { return }
+            let rep = NSBitmapImageRep(cgImage: cgImage)
+            if let pngData = rep.representation(using: .png, properties: [:]) {
+                try? pngData.write(to: URL(fileURLWithPath: thumbPath))
+            }
+            result = NSImage(cgImage: cgImage, size: size)
         }
-        return NSImage(cgImage: cgImage, size: size)
+        semaphore.wait()
+        return result
     }
 
     func removeVideo(at url: URL) -> Bool {
@@ -88,5 +95,12 @@ class VideoLibrary {
             NSLog("LivePaper: Failed to remove video: \(error)")
             return false
         }
+    }
+
+    /// Invalidate cached thumbnail so it gets regenerated on next access
+    func invalidateThumbnail(for url: URL) {
+        let name = url.deletingPathExtension().lastPathComponent
+        let thumbPath = (thumbsPath as NSString).appendingPathComponent("\(name).png")
+        try? FileManager.default.removeItem(atPath: thumbPath)
     }
 }

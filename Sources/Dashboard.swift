@@ -111,10 +111,13 @@ struct DashboardView: View {
                 Text("LIVEPAPER")
                     .font(.system(size: 28, weight: .heavy))
                     .foregroundColor(.white)
-                Spacer()
                 Text("v3.0")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(mutedGray)
+                Spacer()
+                Text("Created by Raunak Gupta")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(white: 0.38))
             }
             Text("Live Wallpaper Engine  ·  Mond Clock")
                 .font(.system(size: 14, weight: .medium))
@@ -406,7 +409,7 @@ struct DashboardView: View {
                     .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
             )
 
-            Text("Long video links will take higher time to process.")
+            Text("Larger videos will take longer to process.")
                 .font(.system(size: 11))
                 .foregroundColor(Color.white.opacity(0.35))
                 .padding(.top, -4)
@@ -488,9 +491,6 @@ struct DashboardView: View {
             }
             .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
             Spacer()
-            Text("Created by Raunak Gupta")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color(white: 0.38))
         }
     }
 
@@ -656,7 +656,7 @@ class DashboardController: NSObject, NSWindowDelegate {
         task.standardError = FileHandle.nullDevice
         guard let _ = try? task.run() else { return "" }
         task.waitUntilExit()
-        guard let data = try? pipe.fileHandleForReading.readDataToEndOfFile(),
+        guard let data = pipe.fileHandleForReading.readDataToEndOfFile() as Data?,
               let out = String(data: data, encoding: .utf8) else { return "" }
         return out.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: "\n").first ?? ""
@@ -674,7 +674,7 @@ class DashboardController: NSObject, NSWindowDelegate {
         task.standardError = FileHandle.nullDevice
         guard let _ = try? task.run() else { return 0 }
         task.waitUntilExit()
-        guard let data = try? pipe.fileHandleForReading.readDataToEndOfFile(),
+        guard let data = pipe.fileHandleForReading.readDataToEndOfFile() as Data?,
               let out = String(data: data, encoding: .utf8) else { return 0 }
         return Double(out.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
     }
@@ -712,10 +712,14 @@ class DashboardController: NSObject, NSWindowDelegate {
             let finalURL = URL(fileURLWithPath: destPath)
             app?.changeVideo(url: finalURL)
             LivePaperConfig.shared.wallpaperVideoPath = finalURL.path
+            state.isDownloading = false
+            state.downloadStatus = ""
             state.refresh()
             return
         }
 
+        // Handoff from download UI to processing UI
+        state.isDownloading = false
         state.isProcessing = true
         state.downloadProgress = 0
         state.processStatus = "Analyzing video…"
@@ -819,6 +823,8 @@ class DashboardController: NSObject, NSWindowDelegate {
                 self?.state.isProcessing = false
                 self?.state.downloadProgress = 0
                 self?.state.processStatus = ""
+                // Regenerate thumbnail for the processed video
+                VideoLibrary.shared.invalidateThumbnail(for: finalURL)
                 self?.app?.changeVideo(url: finalURL)
                 LivePaperConfig.shared.wallpaperVideoPath = finalURL.path
                 self?.state.refresh()
@@ -847,9 +853,16 @@ class DashboardController: NSObject, NSWindowDelegate {
         let videos = state.libraryVideos
         guard index >= 0, index < videos.count else { return }
         let url = videos[index]
-        // If removing the currently playing video, don't allow it
+        // If removing the currently playing video, switch to another first
         if url.path == app?.currentVideoURL.path {
-            return
+            let others = videos.filter { $0.path != url.path }
+            if let next = others.randomElement() {
+                app?.changeVideo(url: next)
+                LivePaperConfig.shared.wallpaperVideoPath = next.path
+            } else {
+                // No other videos — don't remove the last one
+                return
+            }
         }
         _ = VideoLibrary.shared.removeVideo(at: url)
         state.refresh()
@@ -939,17 +952,29 @@ class DashboardController: NSObject, NSWindowDelegate {
                 pipe.fileHandleForReading.readabilityHandler = nil
 
                 if task.terminationStatus == 0 {
+                    // Find the newly downloaded file by modification time
+                    let fm = FileManager.default
+                    let allVideos = VideoLibrary.shared.videoFiles()
+                    let newest = allVideos
+                        .compactMap { url -> (URL, Date)? in
+                            guard let attrs = try? fm.attributesOfItem(atPath: url.path),
+                                  let mod = attrs[.modificationDate] as? Date else { return nil }
+                            return (url, mod)
+                        }
+                        .sorted { $0.1 > $1.1 }
+                        .first?.0
+
                     DispatchQueue.main.async {
                         self?.state.downloadProgress = 1.0
                         self?.state.downloadStatus = "Download complete! Processing…"
                         self?.state.youtubeURL = ""
-                        self?.state.isDownloading = false
+                        // Keep isDownloading true — processAndImportVideo will clear it
+                        // via isProcessing handoff
 
-                        // Find the newly downloaded file and process it to HEVC .mov
-                        let videos = VideoLibrary.shared.videoFiles()
-                        if let newest = videos.last {
-                            self?.processAndImportVideo(sourceURL: newest)
+                        if let downloadedFile = newest {
+                            self?.processAndImportVideo(sourceURL: downloadedFile)
                         } else {
+                            self?.state.isDownloading = false
                             self?.state.downloadProgress = 0
                             self?.state.downloadStatus = ""
                             self?.state.refresh()

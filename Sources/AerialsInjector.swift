@@ -197,7 +197,8 @@ class AerialsInjector {
         gen.appliesPreferredTrackTransform = true
         gen.maximumSize = CGSize(width: 480, height: 480)
         let time = CMTime(seconds: 1.0, preferredTimescale: 600)
-        if let cgImage = try? gen.copyCGImage(at: time, actualTime: nil) {
+        gen.generateCGImageAsynchronously(for: time) { cgImage, _, _ in
+            guard let cgImage = cgImage else { return }
             let rep = NSBitmapImageRep(cgImage: cgImage)
             if let pngData = rep.representation(using: .png, properties: [:]) {
                 try? pngData.write(to: URL(fileURLWithPath: outputPath))
