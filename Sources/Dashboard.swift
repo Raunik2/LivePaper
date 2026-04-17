@@ -730,7 +730,7 @@ class DashboardController: NSObject, NSWindowDelegate {
 
             var args: [String]
             if sourceCodec == "hevc" {
-                // Already HEVC — just remux to .mov, strip audio
+                // Already HEVC — just remux to .mov, keep audio
                 DispatchQueue.main.async {
                     self?.state.processStatus = "Processing video for LivePaper…"
                 }

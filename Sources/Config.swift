@@ -42,7 +42,11 @@ class LivePaperConfig {
         set { d.set(newValue, forKey: p + "ssOn") }
     }
     var volume: Float {
-        get { d.float(forKey: p + "volume") }
+        get {
+            let key = p + "volume"
+            if d.object(forKey: key) == nil { return 0.5 }
+            return d.float(forKey: key)
+        }
         set { d.set(newValue, forKey: p + "volume") }
     }
     var aerialsAssetID: String? {
