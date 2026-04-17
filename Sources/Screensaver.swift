@@ -12,6 +12,9 @@
 
 import AppKit
 import IOKit.pwr_mgt
+import os.log
+
+private let lpLog = OSLog(subsystem: "com.livepaper.app", category: "screensaver")
 
 class ScreensaverController {
     private var active = false
@@ -27,9 +30,12 @@ class ScreensaverController {
     private var lastRecoveryTime: Date = .distantPast
     private var snapshotTimer: Timer?
 
+    private var injectionHealthTimer: Timer?
+
     init(app: LivePaperApp) {
         self.app = app
 
+        // Screensaver notifications via DistributedNotificationCenter (still works)
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(systemScreensaverDidStart),
             name: NSNotification.Name("com.apple.screensaver.didStart"), object: nil
@@ -38,20 +44,72 @@ class ScreensaverController {
             self, selector: #selector(systemScreensaverDidStop),
             name: NSNotification.Name("com.apple.screensaver.didStop"), object: nil
         )
-        DistributedNotificationCenter.default().addObserver(
-            self, selector: #selector(screenLocked),
-            name: NSNotification.Name("com.apple.screenIsLocked"), object: nil
+
+        // Lock/unlock via Darwin notification center (kernel-level, reliable on Tahoe)
+        // The BSD notification name is com.apple.sessionagent.screenIsLocked (NOT
+        // com.apple.screenIsLocked, which is the DistributedNotification name).
+        let darwinCenter = CFNotificationCenterGetDarwinNotifyCenter()
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+
+        CFNotificationCenterAddObserver(
+            darwinCenter, selfPtr,
+            { _, observer, _, _, _ in
+                guard let observer = observer else { return }
+                let me = Unmanaged<ScreensaverController>.fromOpaque(observer).takeUnretainedValue()
+                DispatchQueue.main.async { me.screenLocked() }
+            },
+            "com.apple.sessionagent.screenIsLocked" as CFString, nil, .deliverImmediately
         )
-        DistributedNotificationCenter.default().addObserver(
-            self, selector: #selector(screenUnlocked),
-            name: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil
+        CFNotificationCenterAddObserver(
+            darwinCenter, selfPtr,
+            { _, observer, _, _, _ in
+                guard let observer = observer else { return }
+                let me = Unmanaged<ScreensaverController>.fromOpaque(observer).takeUnretainedValue()
+                DispatchQueue.main.async { me.screenUnlocked() }
+            },
+            "com.apple.sessionagent.screenIsUnlocked" as CFString, nil, .deliverImmediately
         )
 
         startSnapshotTimer()
+        startInjectionHealthTimer()
+    }
+
+    deinit {
+        let darwinCenter = CFNotificationCenterGetDarwinNotifyCenter()
+        CFNotificationCenterRemoveEveryObserver(darwinCenter, Unmanaged.passUnretained(self).toOpaque())
     }
 
     func start() { enabled = true }
-    func stop() { enabled = false; dismiss(); snapshotTimer?.invalidate(); snapshotTimer = nil }
+    func stop() {
+        enabled = false; dismiss()
+        snapshotTimer?.invalidate(); snapshotTimer = nil
+        injectionHealthTimer?.invalidate(); injectionHealthTimer = nil
+    }
+
+    // MARK: - Injection Health Monitor
+    // Periodically verify the aerials injection is intact so the lock screen
+    // always has a video ready. Re-injects without killing WallpaperAgent
+    // if files or manifests are missing.
+
+    private func startInjectionHealthTimer() {
+        injectionHealthTimer = Timer.scheduledTimer(withTimeInterval: 120.0, repeats: true) { [weak self] _ in
+            self?.checkInjectionHealth()
+        }
+        injectionHealthTimer?.tolerance = 30
+    }
+
+    private func checkInjectionHealth() {
+        guard let app = app, LivePaperConfig.shared.lockScreenEnabled else { return }
+        // Don't check while locked — we already handle that in screenLocked()
+        guard !lockedBySystem else { return }
+        DispatchQueue.global(qos: .utility).async {
+            let injector = AerialsInjector()
+            if !injector.isInjectionHealthy() {
+                NSLog("LivePaper: Injection health check failed — re-injecting (no agent restart)")
+                app.injectToAerials(forceRestart: false)
+            }
+        }
+    }
 
     // MARK: - Snapshot Fallback
     // Captures frames from video views and sets as macOS desktop wallpaper
@@ -69,6 +127,11 @@ class ScreensaverController {
 
     private func captureAndSetSnapshots() {
         guard let app = app else { return }
+        // When lock screen is enabled, aerials handles the lock/screensaver display.
+        // Setting a desktop image via NSWorkspace creates a competing image choice in
+        // WallpaperAgent that overrides the aerials video on the lock screen → black/static.
+        if LivePaperConfig.shared.lockScreenEnabled { return }
+
         let snapshotDir = NSString(string: "~/Library/Application Support/LivePaper").expandingTildeInPath
         try? FileManager.default.createDirectory(atPath: snapshotDir, withIntermediateDirectories: true)
 
@@ -99,6 +162,10 @@ class ScreensaverController {
 
     @objc private func systemScreensaverDidStart() {
         guard enabled, !active else { return }
+        if lockedBySystem {
+            os_log("Screensaver started during lock — deferring to system aerials", log: lpLog, type: .default)
+            return
+        }
         activate()
     }
 
@@ -106,34 +173,37 @@ class ScreensaverController {
         if !lockedBySystem { dismiss() }
     }
 
-    @objc private func screenLocked() {
+    private func screenLocked() {
         lockedBySystem = true
-        let agentRunning = AerialsInjector().isWallpaperAgentRunning()
-        NSLog("LivePaper: Screen locked — hiding windows (WallpaperAgent running: %d)", agentRunning ? 1 : 0)
-
-        // Do NOT call injectToAerials() here — it kills WallpaperAgent,
-        // which races with the lock screen transition and causes a black
-        // screen.  Instead we verify after unlock (see screenUnlocked)
-        // so the agent has time to restart before the next lock.
+        let injector = AerialsInjector()
+        let agentRunning = injector.isWallpaperAgentRunning()
+        let injectionHealthy = injector.isInjectionHealthy()
+        os_log("Screen LOCKED — hiding windows (agent=%d, healthy=%d)", log: lpLog, type: .default,
+               agentRunning ? 1 : 0, injectionHealthy ? 1 : 0)
 
         if active {
             dismissForLock()
         }
         hideWallpaperWindows()
+
+        if !injectionHealthy || !agentRunning {
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                guard let self = self, let app = self.app else { return }
+                os_log("Lock-time aerials refresh (healthy=%d, agent=%d)", log: lpLog, type: .default,
+                       injectionHealthy ? 1 : 0, agentRunning ? 1 : 0)
+                app.injectToAerials(forceRestart: !agentRunning)
+            }
+        }
     }
 
-    @objc private func screenUnlocked() {
-        NSLog("LivePaper: Screen unlocked — restoring windows")
+    private func screenUnlocked() {
+        os_log("Screen UNLOCKED — restoring windows", log: lpLog, type: .default)
         lockedBySystem = false
         showWallpaperWindows()
 
-        // Always re-inject after unlock so the agent is primed for the
-        // next lock cycle.  The 2-second delay avoids interfering with
-        // the unlock animation.  The inject call now verifies the agent
-        // restarts successfully before returning.
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self = self else { return }
-            NSLog("LivePaper: Post-unlock aerials refresh")
+            os_log("Post-unlock aerials refresh", log: lpLog, type: .default)
             self.app?.injectToAerials(forceRestart: true)
         }
     }
