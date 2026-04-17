@@ -32,16 +32,14 @@ if [ -f "LICENSE" ]; then
   cp LICENSE "$APP/Contents/Resources/"
 fi
 
-# Bundle sample videos from ~/Movies/LivePaper/ (if they exist)
+# Install bundled sample videos to ~/Movies/LivePaper/
 VIDEOS_DIR="$HOME/Movies/LivePaper"
-for v in \
-  "doge-samurai-crying-moewalls-com.mp4" \
-  "gojo-hollow-purple.3840x2160.mp4" \
-  "miles-morales-falling-upside-down-spiderman-into-the-spiderverse-moewalls-com.mp4"; do
-  if [ -f "$VIDEOS_DIR/$v" ]; then
-    cp "$VIDEOS_DIR/$v" "$APP/Contents/Resources/"
-  fi
-done
+mkdir -p "$VIDEOS_DIR"
+if [ -d "Videos" ]; then
+  for v in Videos/*.mov Videos/*.mp4 Videos/*.m4v; do
+    [ -f "$v" ] && [ ! -f "$VIDEOS_DIR/$(basename "$v")" ] && cp "$v" "$VIDEOS_DIR/"
+  done
+fi
 
 # Info.plist via PlistBuddy
 PB=/usr/libexec/PlistBuddy
