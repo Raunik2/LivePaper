@@ -4,6 +4,32 @@
 # Or:  ./install.sh  (from the repo directory)
 set -e
 
+# ── Progress Bar Helper ───────────────────────────────────────
+TOTAL_STEPS=7
+CURRENT_STEP=0
+BAR_WIDTH=30
+
+show_progress() {
+    CURRENT_STEP=$1
+    local label="$2"
+    local filled=$((CURRENT_STEP * BAR_WIDTH / TOTAL_STEPS))
+    local empty=$((BAR_WIDTH - filled))
+    local pct=$((CURRENT_STEP * 100 / TOTAL_STEPS))
+    local bar=""
+    for ((i=0; i<filled; i++)); do bar+="█"; done
+    for ((i=0; i<empty; i++)); do bar+="░"; done
+    printf "\r   [%s] %3d%%  %s\033[K" "$bar" "$pct" "$label"
+}
+
+finish_step() {
+    printf "\r   [" 
+    local filled=$((CURRENT_STEP * BAR_WIDTH / TOTAL_STEPS))
+    local empty=$((BAR_WIDTH - filled))
+    for ((i=0; i<filled; i++)); do printf "█"; done
+    for ((i=0; i<empty; i++)); do printf "░"; done
+    printf "] %3d%%  ✓ %s\033[K\n" "$((CURRENT_STEP * 100 / TOTAL_STEPS))" "$1"
+}
+
 echo ""
 echo "╔══════════════════════════════════════╗"
 echo "║        LivePaper  Installer          ║"
@@ -19,8 +45,9 @@ if [ "$OS_MAJOR" -le 15 ] 2>/dev/null; then
 fi
 
 # ── Step 1: Xcode Command Line Tools ──────────────────────────
-echo "① Checking Xcode Command Line Tools..."
+show_progress 0 "Checking Xcode CLI Tools..."
 if ! command -v swiftc &>/dev/null; then
+    echo ""
     echo "   📦 Installing Xcode Command Line Tools..."
     xcode-select --install 2>/dev/null || true
     echo ""
@@ -28,24 +55,26 @@ if ! command -v swiftc &>/dev/null; then
     echo "      then re-run this script."
     exit 1
 fi
-echo "   ✓ swiftc found"
+show_progress 1 "Xcode CLI Tools"
+finish_step "Xcode CLI Tools"
 
 # ── Step 2: Homebrew ──────────────────────────────────────────
-echo "② Checking Homebrew..."
+show_progress 1 "Checking Homebrew..."
 if ! command -v brew &>/dev/null; then
+    echo ""
     echo "   📦 Installing Homebrew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    # Add brew to PATH for this session
     if [ -f /opt/homebrew/bin/brew ]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
     elif [ -f /usr/local/bin/brew ]; then
         eval "$(/usr/local/bin/brew shellenv)"
     fi
 fi
-echo "   ✓ Homebrew ready"
+show_progress 2 "Homebrew"
+finish_step "Homebrew"
 
 # ── Step 3: Install tools via Homebrew ────────────────────────
-echo "③ Checking dependencies..."
+show_progress 2 "Checking dependencies..."
 
 BREW_INSTALL=""
 if ! command -v git-lfs &>/dev/null; then BREW_INSTALL="$BREW_INSTALL git-lfs"; fi
@@ -53,33 +82,34 @@ if ! command -v yt-dlp &>/dev/null; then BREW_INSTALL="$BREW_INSTALL yt-dlp"; fi
 if ! command -v ffmpeg &>/dev/null; then BREW_INSTALL="$BREW_INSTALL ffmpeg"; fi
 
 if [ -n "$BREW_INSTALL" ]; then
-    echo "   📦 Installing:$BREW_INSTALL"
+    show_progress 2 "Installing:$BREW_INSTALL..."
+    echo ""
     brew install $BREW_INSTALL
 fi
 
-# Initialize git-lfs globally (idempotent)
 git lfs install --skip-smudge &>/dev/null || true
 
-echo "   ✓ git-lfs, yt-dlp, ffmpeg ready"
+show_progress 3 "Dependencies"
+finish_step "git-lfs, yt-dlp, ffmpeg"
 
 # ── Step 4: Download source ──────────────────────────────────
-echo "④ Downloading LivePaper source..."
+show_progress 3 "Downloading source..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd 2>/dev/null || pwd)"
 if [ -d "$SCRIPT_DIR/Sources" ]; then
     SRC_DIR="$SCRIPT_DIR"
-    echo "   ✓ Using local source"
 else
     TMP_DIR=$(mktemp -d)
     trap "rm -rf $TMP_DIR" EXIT
     git clone --depth 1 https://github.com/Raunik2/LivePaper.git "$TMP_DIR/LivePaper" 2>/dev/null
-    echo "   📥 Downloading sample videos..."
+    show_progress 3 "Downloading sample videos..."
     (cd "$TMP_DIR/LivePaper" && git lfs pull 2>/dev/null) || true
     SRC_DIR="$TMP_DIR/LivePaper"
-    echo "   ✓ Source downloaded"
 fi
+show_progress 4 "Source ready"
+finish_step "Source downloaded"
 
 # ── Step 5: Build ─────────────────────────────────────────────
-echo "⑤ Building LivePaper... (this may take 30-60 seconds)"
+show_progress 4 "Building LivePaper... (30-60 seconds)"
 cd "$SRC_DIR"
 
 APP="LivePaper.app"
@@ -92,10 +122,11 @@ swiftc Sources/*.swift -o "$APP/Contents/MacOS/LivePaper" \
   -framework CoreGraphics -framework QuartzCore -framework CoreText \
   -framework IOKit \
   -target arm64-apple-macosx15.0
-echo "   ✓ Build complete"
+show_progress 5 "Build complete"
+finish_step "Build complete"
 
 # ── Step 6: Bundle resources ──────────────────────────────────
-echo "⑥ Bundling resources..."
+show_progress 5 "Bundling resources..."
 
 # Font
 if [ -f "Fonts/Anurati-Regular.otf" ]; then
@@ -127,9 +158,11 @@ if [ -d "Videos" ]; then
   done
 fi
 if [ "$VIDEOS_COPIED" -gt 0 ]; then
-  echo "   ✓ Installed $VIDEOS_COPIED sample wallpaper(s) to ~/Movies/LivePaper/"
+  show_progress 6 "Resources bundled"
+  finish_step "Bundled + $VIDEOS_COPIED sample wallpaper(s)"
 else
-  echo "   ✓ Resources bundled"
+  show_progress 6 "Resources bundled"
+  finish_step "Resources bundled"
 fi
 
 # Info.plist
@@ -150,11 +183,13 @@ $PB -c "Add :CFBundleIconFile string AppIcon" "$PLIST"
 $PB -c "Add :NSHumanReadableCopyright string 'Copyright © 2026 Raunak Gupta. All rights reserved.'" "$PLIST"
 
 # ── Step 7: Sign & Install ───────────────────────────────────
-echo "⑦ Installing..."
+show_progress 6 "Signing & installing..."
 codesign --force --deep -s - "$APP" 2>/dev/null
 rm -rf /Applications/LivePaper.app
 cp -R "$APP" /Applications/LivePaper.app
 xattr -cr /Applications/LivePaper.app 2>/dev/null
+show_progress 7 "Installed!"
+finish_step "Installed to /Applications"
 
 echo ""
 echo "╔══════════════════════════════════════╗"
