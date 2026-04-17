@@ -33,11 +33,16 @@ if [ -f "LICENSE" ]; then
 fi
 
 # Install bundled sample videos to ~/Movies/LivePaper/
+# Skip files smaller than 100KB — they're likely Git LFS pointers
 VIDEOS_DIR="$HOME/Movies/LivePaper"
 mkdir -p "$VIDEOS_DIR"
 if [ -d "Videos" ]; then
   for v in Videos/*.mov Videos/*.mp4 Videos/*.m4v; do
-    [ -f "$v" ] && [ ! -f "$VIDEOS_DIR/$(basename "$v")" ] && cp "$v" "$VIDEOS_DIR/"
+    [ -f "$v" ] || continue
+    FSIZE=$(stat -f%z "$v" 2>/dev/null || echo 0)
+    [ "$FSIZE" -lt 100000 ] && continue
+    BNAME=$(basename "$v")
+    [ ! -f "$VIDEOS_DIR/$BNAME" ] && cp "$v" "$VIDEOS_DIR/"
   done
 fi
 

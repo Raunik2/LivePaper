@@ -735,7 +735,7 @@ class DashboardController: NSObject, NSWindowDelegate {
                     self?.state.processStatus = "Processing video for LivePaper…"
                 }
                 args = ["-i", sourceURL.path,
-                        "-c", "copy", "-an",
+                        "-c", "copy",
                         "-movflags", "+faststart",
                         "-y", tmpPath]
             } else {
@@ -750,7 +750,7 @@ class DashboardController: NSObject, NSWindowDelegate {
                         "-b:v", "20M",
                         "-tag:v", "hvc1",
                         "-pix_fmt", "p010le",
-                        "-an",
+                        "-c:a", "aac", "-b:a", "192k",
                         "-movflags", "+faststart",
                         "-y", tmpPath]
             }
@@ -859,11 +859,21 @@ class DashboardController: NSObject, NSWindowDelegate {
         guard !urlString.isEmpty else { return }
         // Basic URL validation
         guard urlString.contains("youtube.com") || urlString.contains("youtu.be") else {
-            state.downloadStatus = "Invalid YouTube URL"
+            state.isDownloading = true
+            state.downloadStatus = "❌ Invalid YouTube URL"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                self?.state.isDownloading = false
+                self?.state.downloadStatus = ""
+            }
             return
         }
         guard let ytdlp = Self.findExecutable("yt-dlp") else {
-            state.downloadStatus = "yt-dlp not found. Install with: brew install yt-dlp"
+            state.isDownloading = true
+            state.downloadStatus = "❌ yt-dlp not found — run: brew install yt-dlp"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                self?.state.isDownloading = false
+                self?.state.downloadStatus = ""
+            }
             return
         }
 

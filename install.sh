@@ -39,6 +39,11 @@ else
     trap "rm -rf $TMP_DIR" EXIT
     if command -v git &>/dev/null; then
         git clone --depth 1 https://github.com/Raunik2/LivePaper.git "$TMP_DIR/LivePaper" 2>/dev/null
+        # Pull Git LFS files (sample videos) if git-lfs is available
+        if command -v git-lfs &>/dev/null; then
+            echo "📥 Downloading sample videos..."
+            (cd "$TMP_DIR/LivePaper" && git lfs pull 2>/dev/null) || true
+        fi
     else
         curl -sL https://github.com/Raunik2/LivePaper/archive/main.tar.gz | tar xz -C "$TMP_DIR"
         mv "$TMP_DIR"/LivePaper-* "$TMP_DIR/LivePaper"
@@ -46,7 +51,7 @@ else
     SRC_DIR="$TMP_DIR/LivePaper"
 fi
 
-echo "🔨 Building LivePaper..."
+echo "🔨 Building LivePaper... (this may take 30-60 seconds)"
 cd "$SRC_DIR"
 
 APP="LivePaper.app"
@@ -58,7 +63,8 @@ swiftc Sources/*.swift -o "$APP/Contents/MacOS/LivePaper" \
   -framework AppKit -framework AVFoundation -framework CoreMedia \
   -framework CoreGraphics -framework QuartzCore -framework CoreText \
   -framework IOKit \
-  -target arm64-apple-macosx15.0 2>/dev/null
+  -target arm64-apple-macosx15.0
+echo "   ✓ Build complete"
 
 # Bundle font
 if [ -f "Fonts/Anurati-Regular.otf" ]; then
@@ -74,12 +80,24 @@ fi
 [ -f "LICENSE" ] && cp LICENSE "$APP/Contents/Resources/"
 
 # Install bundled sample videos to ~/Movies/LivePaper/
+# Skip files smaller than 100KB — they're likely Git LFS pointers
 VIDEOS_DIR="$HOME/Movies/LivePaper"
 mkdir -p "$VIDEOS_DIR"
+VIDEOS_COPIED=0
 if [ -d "Videos" ]; then
   for v in Videos/*.mov Videos/*.mp4 Videos/*.m4v; do
-    [ -f "$v" ] && [ ! -f "$VIDEOS_DIR/$(basename "$v")" ] && cp "$v" "$VIDEOS_DIR/"
+    [ -f "$v" ] || continue
+    FSIZE=$(stat -f%z "$v" 2>/dev/null || echo 0)
+    [ "$FSIZE" -lt 100000 ] && continue
+    BNAME=$(basename "$v")
+    if [ ! -f "$VIDEOS_DIR/$BNAME" ]; then
+      cp "$v" "$VIDEOS_DIR/"
+      VIDEOS_COPIED=$((VIDEOS_COPIED + 1))
+    fi
   done
+fi
+if [ "$VIDEOS_COPIED" -gt 0 ]; then
+  echo "   ✓ Installed $VIDEOS_COPIED sample wallpaper(s)"
 fi
 
 # Info.plist

@@ -82,12 +82,12 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
         }
     }
 
-    func injectToAerials() {
+    func injectToAerials(forceRestart: Bool = true) {
         let url = currentVideoURL
         guard url.path != "/dev/null" else { return }
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self = self else { return }
-            if self.aerialsInjector.inject(videoURL: url) {
+            if self.aerialsInjector.inject(videoURL: url, forceRestart: forceRestart) {
                 NSLog("LivePaper: Injected video into Apple aerials for screensaver/lock screen")
             } else {
                 NSLog("LivePaper: Aerials injection failed — lock screen may show default wallpaper")

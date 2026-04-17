@@ -15,7 +15,7 @@ class AerialsInjector {
     private let categoryID   = "LP000000-0000-4000-8000-000000000001"
     private let subcategoryID = "LP000000-0000-4000-8000-000000000002"
 
-    func inject(videoURL: URL, name: String? = nil) -> Bool {
+    func inject(videoURL: URL, name: String? = nil, forceRestart: Bool = true) -> Bool {
         let uuid = LivePaperConfig.shared.aerialsAssetID ?? UUID().uuidString.uppercased()
         let videoName = name ?? videoURL.deletingPathExtension().lastPathComponent
         let fm = FileManager.default
@@ -53,7 +53,21 @@ class AerialsInjector {
         }
 
         LivePaperConfig.shared.aerialsAssetID = uuid
-        restartWallpaperAgent()
+
+        if forceRestart || videoChanged {
+            NSLog("LivePaper: Aerials injection — restarting WallpaperAgent (videoChanged=%d, forceRestart=%d)",
+                  videoChanged ? 1 : 0, forceRestart ? 1 : 0)
+            restartWallpaperAgent()
+            verifyAgentRestart()
+        } else {
+            NSLog("LivePaper: Aerials injection — skipping agent restart (no changes)")
+            // Just verify the agent is alive
+            if !isWallpaperAgentRunning() {
+                NSLog("LivePaper: WallpaperAgent not running — restarting")
+                restartWallpaperAgent()
+                verifyAgentRestart()
+            }
+        }
         return true
     }
 
@@ -284,5 +298,51 @@ class AerialsInjector {
         task.arguments = ["WallpaperAgent"]
         try? task.run()
         task.waitUntilExit()
+        NSLog("LivePaper: WallpaperAgent killed (exit code %d)", task.terminationStatus)
+    }
+
+    /// Check if WallpaperAgent is running
+    func isWallpaperAgentRunning() -> Bool {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        task.arguments = ["-x", "WallpaperAgent"]
+        task.standardOutput = FileHandle.nullDevice
+        task.standardError = FileHandle.nullDevice
+        try? task.run()
+        task.waitUntilExit()
+        return task.terminationStatus == 0
+    }
+
+    /// Verify the agent restarts within a few seconds
+    private func verifyAgentRestart() {
+        // WallpaperAgent auto-restarts via launchd; wait up to 5 seconds
+        for i in 1...10 {
+            Thread.sleep(forTimeInterval: 0.5)
+            if isWallpaperAgentRunning() {
+                NSLog("LivePaper: WallpaperAgent restarted after %.1f seconds", Double(i) * 0.5)
+                return
+            }
+        }
+        NSLog("LivePaper: WARNING — WallpaperAgent did not restart within 5 seconds")
+    }
+
+    /// Check if injection is complete and agent is healthy
+    func isInjectionHealthy() -> Bool {
+        guard let uuid = LivePaperConfig.shared.aerialsAssetID else { return false }
+        let fm = FileManager.default
+        let videoPath = (videosDir as NSString).appendingPathComponent("\(uuid).mov")
+        guard fm.fileExists(atPath: videoPath) else {
+            NSLog("LivePaper: Injection unhealthy — video file missing")
+            return false
+        }
+        guard fm.fileExists(atPath: entriesPath) else {
+            NSLog("LivePaper: Injection unhealthy — entries.json missing")
+            return false
+        }
+        guard isWallpaperAgentRunning() else {
+            NSLog("LivePaper: Injection unhealthy — WallpaperAgent not running")
+            return false
+        }
+        return true
     }
 }

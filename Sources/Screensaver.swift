@@ -108,11 +108,12 @@ class ScreensaverController {
 
     @objc private func screenLocked() {
         lockedBySystem = true
-        NSLog("LivePaper: Screen locked — hiding windows for system aerials")
+        let agentRunning = AerialsInjector().isWallpaperAgentRunning()
+        NSLog("LivePaper: Screen locked — hiding windows (WallpaperAgent running: %d)", agentRunning ? 1 : 0)
 
         // Do NOT call injectToAerials() here — it kills WallpaperAgent,
         // which races with the lock screen transition and causes a black
-        // screen.  Instead we re-inject after unlock (see screenUnlocked)
+        // screen.  Instead we verify after unlock (see screenUnlocked)
         // so the agent has time to restart before the next lock.
 
         if active {
@@ -126,14 +127,14 @@ class ScreensaverController {
         lockedBySystem = false
         showWallpaperWindows()
 
-        // Re-inject aerials after unlock so the system is primed for
-        // the next lock cycle.  The 2-second delay avoids interfering
-        // with the unlock animation and gives WallpaperAgent time to
-        // fully restart well before the next lock.
+        // Always re-inject after unlock so the agent is primed for the
+        // next lock cycle.  The 2-second delay avoids interfering with
+        // the unlock animation.  The inject call now verifies the agent
+        // restarts successfully before returning.
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self = self else { return }
             NSLog("LivePaper: Post-unlock aerials refresh")
-            self.app?.injectToAerials()
+            self.app?.injectToAerials(forceRestart: true)
         }
     }
 
