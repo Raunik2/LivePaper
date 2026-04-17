@@ -18,40 +18,68 @@ if [ "$OS_MAJOR" -le 15 ] 2>/dev/null; then
     exit 1
 fi
 
-# Check for Xcode Command Line Tools (needed for swiftc)
+# ── Step 1: Xcode Command Line Tools ──────────────────────────
+echo "① Checking Xcode Command Line Tools..."
 if ! command -v swiftc &>/dev/null; then
-    echo "📦 Installing Xcode Command Line Tools (required to build)..."
+    echo "   📦 Installing Xcode Command Line Tools..."
     xcode-select --install 2>/dev/null || true
     echo ""
-    echo "⏳ Please complete the Xcode CLT installation dialog,"
-    echo "   then re-run this script."
+    echo "   ⏳ Please complete the Xcode CLT installation dialog,"
+    echo "      then re-run this script."
     exit 1
 fi
+echo "   ✓ swiftc found"
 
-# Determine source directory
+# ── Step 2: Homebrew ──────────────────────────────────────────
+echo "② Checking Homebrew..."
+if ! command -v brew &>/dev/null; then
+    echo "   📦 Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # Add brew to PATH for this session
+    if [ -f /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [ -f /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+fi
+echo "   ✓ Homebrew ready"
+
+# ── Step 3: Install tools via Homebrew ────────────────────────
+echo "③ Checking dependencies..."
+
+BREW_INSTALL=""
+if ! command -v git-lfs &>/dev/null; then BREW_INSTALL="$BREW_INSTALL git-lfs"; fi
+if ! command -v yt-dlp &>/dev/null; then BREW_INSTALL="$BREW_INSTALL yt-dlp"; fi
+if ! command -v ffmpeg &>/dev/null; then BREW_INSTALL="$BREW_INSTALL ffmpeg"; fi
+
+if [ -n "$BREW_INSTALL" ]; then
+    echo "   📦 Installing:$BREW_INSTALL"
+    brew install $BREW_INSTALL
+fi
+
+# Initialize git-lfs globally (idempotent)
+git lfs install --skip-smudge &>/dev/null || true
+
+echo "   ✓ git-lfs, yt-dlp, ffmpeg ready"
+
+# ── Step 4: Download source ──────────────────────────────────
+echo "④ Downloading LivePaper source..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd 2>/dev/null || pwd)"
 if [ -d "$SCRIPT_DIR/Sources" ]; then
     SRC_DIR="$SCRIPT_DIR"
+    echo "   ✓ Using local source"
 else
-    # Running via curl — clone to tmp
-    echo "📥 Downloading LivePaper source..."
     TMP_DIR=$(mktemp -d)
     trap "rm -rf $TMP_DIR" EXIT
-    if command -v git &>/dev/null; then
-        git clone --depth 1 https://github.com/Raunik2/LivePaper.git "$TMP_DIR/LivePaper" 2>/dev/null
-        # Pull Git LFS files (sample videos) if git-lfs is available
-        if command -v git-lfs &>/dev/null; then
-            echo "📥 Downloading sample videos..."
-            (cd "$TMP_DIR/LivePaper" && git lfs pull 2>/dev/null) || true
-        fi
-    else
-        curl -sL https://github.com/Raunik2/LivePaper/archive/main.tar.gz | tar xz -C "$TMP_DIR"
-        mv "$TMP_DIR"/LivePaper-* "$TMP_DIR/LivePaper"
-    fi
+    git clone --depth 1 https://github.com/Raunik2/LivePaper.git "$TMP_DIR/LivePaper" 2>/dev/null
+    echo "   📥 Downloading sample videos..."
+    (cd "$TMP_DIR/LivePaper" && git lfs pull 2>/dev/null) || true
     SRC_DIR="$TMP_DIR/LivePaper"
+    echo "   ✓ Source downloaded"
 fi
 
-echo "🔨 Building LivePaper... (this may take 30-60 seconds)"
+# ── Step 5: Build ─────────────────────────────────────────────
+echo "⑤ Building LivePaper... (this may take 30-60 seconds)"
 cd "$SRC_DIR"
 
 APP="LivePaper.app"
@@ -66,21 +94,23 @@ swiftc Sources/*.swift -o "$APP/Contents/MacOS/LivePaper" \
   -target arm64-apple-macosx15.0
 echo "   ✓ Build complete"
 
-# Bundle font
+# ── Step 6: Bundle resources ──────────────────────────────────
+echo "⑥ Bundling resources..."
+
+# Font
 if [ -f "Fonts/Anurati-Regular.otf" ]; then
   cp "Fonts/Anurati-Regular.otf" "$APP/Contents/Resources/"
 elif [ -f "$HOME/Library/Fonts/Anurati-Regular.otf" ]; then
   cp "$HOME/Library/Fonts/Anurati-Regular.otf" "$APP/Contents/Resources/"
 fi
 
-# Bundle app icon
+# App icon
 [ -f "AppIcon.icns" ] && cp AppIcon.icns "$APP/Contents/Resources/"
 
-# Bundle license
+# License
 [ -f "LICENSE" ] && cp LICENSE "$APP/Contents/Resources/"
 
-# Install bundled sample videos to ~/Movies/LivePaper/
-# Skip files smaller than 100KB — they're likely Git LFS pointers
+# Sample videos — skip Git LFS pointers (<100KB)
 VIDEOS_DIR="$HOME/Movies/LivePaper"
 mkdir -p "$VIDEOS_DIR"
 VIDEOS_COPIED=0
@@ -97,7 +127,9 @@ if [ -d "Videos" ]; then
   done
 fi
 if [ "$VIDEOS_COPIED" -gt 0 ]; then
-  echo "   ✓ Installed $VIDEOS_COPIED sample wallpaper(s)"
+  echo "   ✓ Installed $VIDEOS_COPIED sample wallpaper(s) to ~/Movies/LivePaper/"
+else
+  echo "   ✓ Resources bundled"
 fi
 
 # Info.plist
@@ -117,20 +149,19 @@ $PB -c "Add :LSApplicationCategoryType string public.app-category.utilities" "$P
 $PB -c "Add :CFBundleIconFile string AppIcon" "$PLIST"
 $PB -c "Add :NSHumanReadableCopyright string 'Copyright © 2026 Raunak Gupta. All rights reserved.'" "$PLIST"
 
-# Code sign
+# ── Step 7: Sign & Install ───────────────────────────────────
+echo "⑦ Installing..."
 codesign --force --deep -s - "$APP" 2>/dev/null
-
-# Install
-echo "📂 Installing to /Applications..."
 rm -rf /Applications/LivePaper.app
 cp -R "$APP" /Applications/LivePaper.app
 xattr -cr /Applications/LivePaper.app 2>/dev/null
 
 echo ""
-echo "✅ LivePaper installed successfully!"
+echo "╔══════════════════════════════════════╗"
+echo "║     ✅ LivePaper installed!          ║"
+echo "╚══════════════════════════════════════╝"
 echo ""
 echo "🚀 Launching LivePaper..."
 open /Applications/LivePaper.app
-
 echo ""
-echo "Done! LivePaper is running. Check your menu bar."
+echo "Done! Check your menu bar for the LivePaper icon."
