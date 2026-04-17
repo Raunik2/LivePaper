@@ -22,6 +22,7 @@ class ScreensaverController {
     private weak var app: LivePaperApp?
     private var monitor: Any?
     private var sleepAssertionID: IOPMAssertionID = 0
+    private var lockSleepAssertionID: IOPMAssertionID = 0
     private var lockedBySystem = false
     private var enabled = false
     private var wasPausedBefore = false
@@ -186,6 +187,13 @@ class ScreensaverController {
         }
         hideWallpaperWindows()
 
+        // Prevent the display from sleeping while locked so the aerials video
+        // keeps playing on the lock screen.  Without this, the display sleeps
+        // after ~30s and the aerials player ramps down to black on wake.
+        if LivePaperConfig.shared.lockScreenEnabled {
+            startLockSleepAssertion()
+        }
+
         if !injectionHealthy || !agentRunning {
             DispatchQueue.global(qos: .utility).async { [weak self] in
                 guard let self = self, let app = self.app else { return }
@@ -199,6 +207,7 @@ class ScreensaverController {
     private func screenUnlocked() {
         os_log("Screen UNLOCKED — restoring windows", log: lpLog, type: .default)
         lockedBySystem = false
+        releaseLockSleepAssertion()
         showWallpaperWindows()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
@@ -373,6 +382,34 @@ class ScreensaverController {
             "LivePaper screensaver active" as CFString,
             &sleepAssertionID
         )
+    }
+
+    // MARK: - Lock screen display sleep prevention
+    // Prevents the display from sleeping while locked so the aerials video
+    // keeps playing on the lock screen. Released on unlock.
+    // Only active when on AC power to preserve battery life.
+
+    private func startLockSleepAssertion() {
+        guard lockSleepAssertionID == 0 else { return }
+        if BatteryMonitor.checkOnBattery() {
+            os_log("Lock sleep assertion skipped — on battery", log: lpLog, type: .default)
+            return
+        }
+        let result = IOPMAssertionCreateWithName(
+            kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
+            IOPMAssertionLevel(kIOPMAssertionLevelOn),
+            "LivePaper lock screen video" as CFString,
+            &lockSleepAssertionID
+        )
+        os_log("Lock sleep assertion created (result=%d, id=%d)", log: lpLog, type: .default,
+               result, lockSleepAssertionID)
+    }
+
+    private func releaseLockSleepAssertion() {
+        guard lockSleepAssertionID != 0 else { return }
+        IOPMAssertionRelease(lockSleepAssertionID)
+        os_log("Lock sleep assertion released (id=%d)", log: lpLog, type: .default, lockSleepAssertionID)
+        lockSleepAssertionID = 0
     }
 
     // MARK: - Screen config change while active

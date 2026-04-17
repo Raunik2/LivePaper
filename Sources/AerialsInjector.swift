@@ -61,14 +61,43 @@ class AerialsInjector {
             verifyAgentRestart()
         } else {
             NSLog("LivePaper: Aerials injection — skipping agent restart (no changes)")
-            // Just verify the agent is alive
             if !isWallpaperAgentRunning() {
                 NSLog("LivePaper: WallpaperAgent not running — restarting")
                 restartWallpaperAgent()
                 verifyAgentRestart()
             }
         }
+
+        // Point the screensaver module at the aerials extension so the lock screen
+        // screensaver phase plays our video instead of a standalone module (e.g.
+        // Ventura) that fades to black.
+        configureScreensaverForAerials()
+
         return true
+    }
+
+    /// Set macOS screensaver to use the wallpaper aerials extension so the
+    /// lock-screen screensaver phase plays our injected video continuously.
+    private func configureScreensaverForAerials() {
+        let aerialsPath = "/System/Library/ExtensionKit/Extensions/WallpaperAerialsExtension.appex"
+        let current = UserDefaults(suiteName: "com.apple.screensaver")
+        let currentModule = (current?.dictionary(forKey: "moduleDict") as? [String: Any])?["path"] as? String ?? ""
+        if currentModule == aerialsPath { return }
+
+        // defaults -currentHost write com.apple.screensaver moduleDict ...
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
+        task.arguments = [
+            "-currentHost", "write", "com.apple.screensaver",
+            "moduleDict",
+            "-dict",
+            "moduleName", "WallpaperAerialsExtension",
+            "path", aerialsPath,
+            "type", "0"
+        ]
+        try? task.run()
+        task.waitUntilExit()
+        NSLog("LivePaper: Screensaver module set to aerials extension (exit %d)", task.terminationStatus)
     }
 
     func remove() {
