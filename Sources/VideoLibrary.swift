@@ -71,4 +71,22 @@ class VideoLibrary {
         }
         return NSImage(cgImage: cgImage, size: size)
     }
+
+    func removeVideo(at url: URL) -> Bool {
+        let fm = FileManager.default
+        let name = url.deletingPathExtension().lastPathComponent
+        let thumbPath = (thumbsPath as NSString).appendingPathComponent("\(name).png")
+        do {
+            if fm.fileExists(atPath: url.path) {
+                try fm.removeItem(at: url)
+            }
+            if fm.fileExists(atPath: thumbPath) {
+                try fm.removeItem(atPath: thumbPath)
+            }
+            return true
+        } catch {
+            NSLog("LivePaper: Failed to remove video: \(error)")
+            return false
+        }
+    }
 }

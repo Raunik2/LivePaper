@@ -118,7 +118,7 @@ class ClockWindow: NSWindow {
     init(screen: NSScreen) {
         let w: CGFloat = 900, h: CGFloat = 250
         super.init(
-            contentRect: NSRect(x: screen.frame.midX - w/2, y: screen.frame.midY - h/2 + 40, width: w, height: h),
+            contentRect: NSRect(x: screen.frame.midX - w/2, y: screen.frame.midY - h/2 + 120, width: w, height: h),
             styleMask: .borderless, backing: .buffered, defer: false
         )
         level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 2)

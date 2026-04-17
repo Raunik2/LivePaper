@@ -232,6 +232,11 @@ class AerialsInjector {
 
         store["SystemDefault"] = entry
 
+        // Backdrop sets AllSpacesAndDisplays as a global override for all
+        // displays and spaces — this is what makes the aerial show on the
+        // lock screen for every display.
+        store["AllSpacesAndDisplays"] = entry
+
         if var displays = store["Displays"] as? [String: Any] {
             for key in displays.keys { displays[key] = entry }
             store["Displays"] = displays

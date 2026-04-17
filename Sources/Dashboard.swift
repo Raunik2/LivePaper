@@ -34,6 +34,12 @@ class DashboardState: ObservableObject {
     @Published var pauseOnBattery: Bool = false
     @Published var libraryVideos: [URL] = []
     @Published var currentVideoPath: String = ""
+    @Published var youtubeURL: String = ""
+    @Published var isDownloading: Bool = false
+    @Published var downloadProgress: Double = 0  // 0.0 to 1.0
+    @Published var downloadStatus: String = ""
+    @Published var isProcessing: Bool = false
+    @Published var processStatus: String = ""
 
     weak var app: LivePaperApp?
 
@@ -216,42 +222,108 @@ struct DashboardView: View {
 
     private func videoThumbnail(url: URL, index: Int) -> some View {
         let isActive = url.path == state.currentVideoPath
-        return Button(action: { actions.selectVideo(index) }) {
-            VStack(spacing: 6) {
-                Group {
-                    if let thumb = VideoLibrary.shared.thumbnail(for: url) {
-                        Image(nsImage: thumb)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(height: 80)
-                            .clipped()
-                    } else {
-                        Rectangle()
-                            .fill(Color(white: 0.12))
-                            .frame(height: 80)
+        return ZStack(alignment: .topTrailing) {
+            Button(action: { actions.selectVideo(index) }) {
+                VStack(spacing: 6) {
+                    Group {
+                        if let thumb = VideoLibrary.shared.thumbnail(for: url) {
+                            Image(nsImage: thumb)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: 80)
+                                .clipped()
+                        } else {
+                            Rectangle()
+                                .fill(Color(white: 0.12))
+                                .frame(height: 80)
+                        }
                     }
-                }
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(isActive ? accentCyan : Color.clear, lineWidth: 2)
-                )
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isActive ? accentCyan : Color.clear, lineWidth: 2)
+                    )
 
-                Text(url.deletingPathExtension().lastPathComponent)
-                    .font(.system(size: 11, weight: isActive ? .semibold : .regular))
-                    .foregroundColor(isActive ? accentCyan : Color(white: 0.55))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    Text(url.deletingPathExtension().lastPathComponent)
+                        .font(.system(size: 11, weight: isActive ? .semibold : .regular))
+                        .foregroundColor(isActive ? accentCyan : Color(white: 0.55))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
+            .buttonStyle(.plain)
+            .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
+
+            // Remove button (X)
+            Button(action: { actions.removeVideo(index) }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(Color(white: 0.7))
+                    .background(Circle().fill(Color(white: 0.1)))
+            }
+            .buttonStyle(.plain)
+            .offset(x: 4, y: -4)
+            .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
         }
-        .buttonStyle(.plain)
-        .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
     }
 
     // MARK: - Action Buttons
 
     private var actionButtons: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
+            // Progress Section — shown between library and buttons when active
+            if state.isDownloading || state.isProcessing {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: state.isDownloading ? "arrow.down.circle.fill" : "gearshape.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(state.isDownloading ? accentCyan : accentPurple)
+                        Text(state.isDownloading ? state.downloadStatus : state.processStatus)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        Spacer()
+                        if state.downloadProgress > 0 {
+                            Text("\(Int(state.downloadProgress * 100))%")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(state.isDownloading ? accentCyan : accentPurple)
+                        }
+                    }
+
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(white: 0.2))
+                                .frame(height: 6)
+                            if state.downloadProgress > 0 {
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(LinearGradient(colors: [accentPurple, accentCyan], startPoint: .leading, endPoint: .trailing))
+                                    .frame(width: geo.size.width * CGFloat(state.downloadProgress), height: 6)
+                                    .animation(.easeInOut(duration: 0.3), value: state.downloadProgress)
+                            } else {
+                                // Indeterminate: pulsing bar
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(LinearGradient(colors: [accentPurple, accentCyan], startPoint: .leading, endPoint: .trailing))
+                                    .frame(width: geo.size.width * 0.3, height: 6)
+                                    .opacity(0.7)
+                            }
+                        }
+                    }
+                    .frame(height: 6)
+                }
+                .padding(14)
+                .background(cardBg)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(
+                            LinearGradient(colors: [accentPurple.opacity(0.3), accentCyan.opacity(0.3)],
+                                         startPoint: .leading, endPoint: .trailing),
+                            lineWidth: 1
+                        )
+                )
+            }
+
             Button(action: actions.chooseFile) {
                 HStack {
                     Image(systemName: "folder.fill")
@@ -270,6 +342,7 @@ struct DashboardView: View {
                 )
             }
             .buttonStyle(.plain)
+            .disabled(state.isProcessing)
             .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
 
             Button(action: actions.browseMoewalls) {
@@ -290,6 +363,53 @@ struct DashboardView: View {
             }
             .buttonStyle(.plain)
             .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
+
+            // YouTube Download
+            HStack(spacing: 10) {
+                Image(systemName: "play.rectangle.fill")
+                    .font(.system(size: 15))
+                    .foregroundColor(Color.red)
+
+                TextField("Paste YouTube URL here…", text: Binding(
+                    get: { state.youtubeURL },
+                    set: { state.youtubeURL = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 13))
+
+                Button(action: { actions.downloadYouTube(state.youtubeURL) }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 13))
+                        Text("Download")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 30)
+                    .background(Color.red.opacity(0.15))
+                    .foregroundColor(Color.red)
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(state.youtubeURL.isEmpty || state.isDownloading)
+                .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
+            }
+            .padding(12)
+            .background(cardBg)
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+            )
+
+            Text("Long video links will take higher time to process.")
+                .font(.system(size: 11))
+                .foregroundColor(Color.white.opacity(0.35))
+                .padding(.top, -4)
         }
     }
 
@@ -393,6 +513,8 @@ struct DashboardActions {
     var chooseFile: () -> Void = {}
     var browseMoewalls: () -> Void = {}
     var selectVideo: (Int) -> Void = { _ in }
+    var removeVideo: (Int) -> Void = { _ in }
+    var downloadYouTube: (String) -> Void = { _ in }
     var toggleClock: (Bool) -> Void = { _ in }
     var setClockStyle: (Int) -> Void = { _ in }
     var toggleLockScreen: (Bool) -> Void = { _ in }
@@ -474,6 +596,8 @@ class DashboardController: NSObject, NSWindowDelegate {
                 }
             },
             selectVideo:       { [weak self] idx in self?.selectLibraryVideo(idx) },
+            removeVideo:       { [weak self] idx in self?.removeLibraryVideo(idx) },
+            downloadYouTube:   { [weak self] url in self?.downloadFromYouTube(url) },
             toggleClock:       { [weak self] on in
                 LivePaperConfig.shared.clockEnabled = on
                 self?.state.clockEnabled = on
@@ -496,7 +620,6 @@ class DashboardController: NSObject, NSWindowDelegate {
             togglePauseOnBattery: { [weak self] on in
                 LivePaperConfig.shared.pauseOnBattery = on
                 self?.state.pauseOnBattery = on
-                // Re-apply battery mode with new setting
                 if self?.app?.batteryMonitor?.isOnBattery == true {
                     if on { self?.app?.enterBatteryMode() }
                     else { self?.app?.exitBatteryMode(); self?.app?.enterBatteryMode() }
@@ -517,22 +640,339 @@ class DashboardController: NSObject, NSWindowDelegate {
 
     private func chooseWallpaper() {
         guard let url = pickVideo(title: "Choose Wallpaper Video") else { return }
-        let destPath = (VideoLibrary.shared.libraryPath as NSString).appendingPathComponent(url.lastPathComponent)
-        if !FileManager.default.fileExists(atPath: destPath) {
-            try? FileManager.default.copyItem(at: url, to: URL(fileURLWithPath: destPath))
+        processAndImportVideo(sourceURL: url)
+    }
+
+    /// Probe video codec using ffprobe. Returns codec name (e.g. "hevc", "h264", "vp9", "av1").
+    private static func probeVideoCodec(path: String) -> String {
+        guard let ffprobe = findExecutable("ffprobe") else { return "" }
+        let task = Process()
+        let pipe = Pipe()
+        task.executableURL = URL(fileURLWithPath: ffprobe)
+        task.arguments = ["-v", "quiet", "-select_streams", "v:0",
+                          "-show_entries", "stream=codec_name",
+                          "-of", "csv=p=0", path]
+        task.standardOutput = pipe
+        task.standardError = FileHandle.nullDevice
+        guard let _ = try? task.run() else { return "" }
+        task.waitUntilExit()
+        guard let data = try? pipe.fileHandleForReading.readDataToEndOfFile(),
+              let out = String(data: data, encoding: .utf8) else { return "" }
+        return out.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: "\n").first ?? ""
+    }
+
+    /// Probe video duration in seconds using ffprobe.
+    private static func probeVideoDuration(path: String) -> Double {
+        guard let ffprobe = findExecutable("ffprobe") else { return 0 }
+        let task = Process()
+        let pipe = Pipe()
+        task.executableURL = URL(fileURLWithPath: ffprobe)
+        task.arguments = ["-v", "quiet", "-show_entries", "format=duration",
+                          "-of", "csv=p=0", path]
+        task.standardOutput = pipe
+        task.standardError = FileHandle.nullDevice
+        guard let _ = try? task.run() else { return 0 }
+        task.waitUntilExit()
+        guard let data = try? pipe.fileHandleForReading.readDataToEndOfFile(),
+              let out = String(data: data, encoding: .utf8) else { return 0 }
+        return Double(out.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+    }
+
+    /// Parse "time=HH:MM:SS.ms" from ffmpeg stderr output and return seconds.
+    private static func parseFFmpegTime(_ text: String) -> Double? {
+        // Look for time=HH:MM:SS.xx or time=SS.xx
+        guard let range = text.range(of: "time=", options: .backwards) else { return nil }
+        let after = String(text[range.upperBound...])
+        let timeStr = after.components(separatedBy: " ").first ?? ""
+        let parts = timeStr.components(separatedBy: ":")
+        if parts.count == 3 {
+            let h = Double(parts[0]) ?? 0
+            let m = Double(parts[1]) ?? 0
+            let s = Double(parts[2]) ?? 0
+            return h * 3600 + m * 60 + s
+        } else if let s = Double(parts[0]) {
+            return s
         }
-        app?.changeVideo(url: url)
-        LivePaperConfig.shared.wallpaperVideoPath = url.path
-        state.refresh()
+        return nil
+    }
+
+    private func processAndImportVideo(sourceURL: URL) {
+        let baseName = sourceURL.deletingPathExtension().lastPathComponent
+        let safeName = baseName.replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+        let destName = safeName + ".mov"
+        let destPath = (VideoLibrary.shared.libraryPath as NSString).appendingPathComponent(destName)
+
+        guard let ffmpeg = Self.findExecutable("ffmpeg") else {
+            // No ffmpeg — just copy
+            if !FileManager.default.fileExists(atPath: destPath) {
+                try? FileManager.default.copyItem(at: sourceURL, to: URL(fileURLWithPath: destPath))
+            }
+            let finalURL = URL(fileURLWithPath: destPath)
+            app?.changeVideo(url: finalURL)
+            LivePaperConfig.shared.wallpaperVideoPath = finalURL.path
+            state.refresh()
+            return
+        }
+
+        state.isProcessing = true
+        state.downloadProgress = 0
+        state.processStatus = "Analyzing video…"
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let tmpPath = destPath + ".tmp.mov"
+            let fm = FileManager.default
+            try? fm.removeItem(atPath: tmpPath)
+
+            let sourceCodec = Self.probeVideoCodec(path: sourceURL.path)
+            let totalDuration = Self.probeVideoDuration(path: sourceURL.path)
+
+            var args: [String]
+            if sourceCodec == "hevc" {
+                // Already HEVC — just remux to .mov, strip audio
+                DispatchQueue.main.async {
+                    self?.state.processStatus = "Processing video for LivePaper…"
+                }
+                args = ["-i", sourceURL.path,
+                        "-c", "copy", "-an",
+                        "-movflags", "+faststart",
+                        "-y", tmpPath]
+            } else {
+                // Transcode to HEVC via hardware VideoToolbox
+                // Use 10-bit yuv420p10le and hvc1 tag to match Apple's
+                // native aerial format (required for lock screen playback)
+                DispatchQueue.main.async {
+                    self?.state.processStatus = "Processing video for LivePaper…"
+                }
+                args = ["-i", sourceURL.path,
+                        "-c:v", "hevc_videotoolbox",
+                        "-b:v", "20M",
+                        "-tag:v", "hvc1",
+                        "-pix_fmt", "p010le",
+                        "-an",
+                        "-movflags", "+faststart",
+                        "-y", tmpPath]
+            }
+
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: ffmpeg)
+            task.arguments = args
+            task.standardOutput = FileHandle.nullDevice
+
+            // Parse stderr for progress
+            let errPipe = Pipe()
+            task.standardError = errPipe
+            var stderrBuf = ""
+            errPipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
+                stderrBuf += chunk
+                if totalDuration > 0, let currentTime = Self.parseFFmpegTime(stderrBuf) {
+                    let pct = min(currentTime / totalDuration, 0.99)
+                    DispatchQueue.main.async {
+                        self?.state.downloadProgress = pct
+                        self?.state.processStatus = "Processing video for LivePaper… \(Int(pct * 100))%"
+                    }
+                    // Keep only last 500 chars to avoid memory growth
+                    if stderrBuf.count > 500 {
+                        stderrBuf = String(stderrBuf.suffix(300))
+                    }
+                }
+            }
+
+            var success = false
+            do {
+                try task.run()
+                task.waitUntilExit()
+                errPipe.fileHandleForReading.readabilityHandler = nil
+                success = task.terminationStatus == 0
+            } catch {
+                errPipe.fileHandleForReading.readabilityHandler = nil
+            }
+
+            // Verify output file is valid
+            if success {
+                let attrs = try? fm.attributesOfItem(atPath: tmpPath)
+                let size = attrs?[.size] as? Int ?? 0
+                if size < 10000 { success = false }
+            }
+
+            if success {
+                // Remove source if it's inside the library (in-place conversion)
+                let srcInLibrary = sourceURL.path.hasPrefix(VideoLibrary.shared.libraryPath)
+                if srcInLibrary && sourceURL.path != destPath {
+                    try? fm.removeItem(at: sourceURL)
+                }
+                if fm.fileExists(atPath: destPath) { try? fm.removeItem(atPath: destPath) }
+                try? fm.moveItem(atPath: tmpPath, toPath: destPath)
+            } else {
+                try? fm.removeItem(atPath: tmpPath)
+                // Fallback: copy original if nothing at dest
+                if !fm.fileExists(atPath: destPath) {
+                    try? fm.copyItem(at: sourceURL, to: URL(fileURLWithPath: destPath))
+                }
+            }
+
+            let finalURL = URL(fileURLWithPath: destPath)
+            DispatchQueue.main.async {
+                self?.state.isProcessing = false
+                self?.state.downloadProgress = 0
+                self?.state.processStatus = ""
+                self?.app?.changeVideo(url: finalURL)
+                LivePaperConfig.shared.wallpaperVideoPath = finalURL.path
+                self?.state.refresh()
+            }
+        }
     }
 
     private func selectLibraryVideo(_ index: Int) {
         let videos = state.libraryVideos
         guard index >= 0, index < videos.count else { return }
         let url = videos[index]
-        app?.changeVideo(url: url)
-        LivePaperConfig.shared.wallpaperVideoPath = url.path
+
+        // Check if video needs conversion to HEVC
+        let codec = Self.probeVideoCodec(path: url.path)
+        if codec != "hevc" && codec != "" {
+            // Not HEVC — convert it in-place, then play
+            processAndImportVideo(sourceURL: url)
+        } else {
+            app?.changeVideo(url: url)
+            LivePaperConfig.shared.wallpaperVideoPath = url.path
+            state.refresh()
+        }
+    }
+
+    private func removeLibraryVideo(_ index: Int) {
+        let videos = state.libraryVideos
+        guard index >= 0, index < videos.count else { return }
+        let url = videos[index]
+        // If removing the currently playing video, don't allow it
+        if url.path == app?.currentVideoURL.path {
+            return
+        }
+        _ = VideoLibrary.shared.removeVideo(at: url)
         state.refresh()
+    }
+
+    private func downloadFromYouTube(_ urlString: String) {
+        guard !urlString.isEmpty else { return }
+        // Basic URL validation
+        guard urlString.contains("youtube.com") || urlString.contains("youtu.be") else {
+            state.downloadStatus = "Invalid YouTube URL"
+            return
+        }
+        guard let ytdlp = Self.findExecutable("yt-dlp") else {
+            state.downloadStatus = "yt-dlp not found. Install with: brew install yt-dlp"
+            return
+        }
+
+        state.isDownloading = true
+        state.downloadProgress = 0
+        state.downloadStatus = "Starting download…"
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            VideoLibrary.shared.ensureReady()
+            let libraryPath = VideoLibrary.shared.libraryPath
+
+            // Download best quality video+audio merged
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: ytdlp)
+            task.arguments = [
+                // Download BEST quality regardless of format (4K is usually webm/vp9)
+                "-f", "bestvideo+bestaudio/best",
+                // Output as mp4 first (yt-dlp merges here)
+                "--merge-output-format", "mp4",
+                "-o", (libraryPath as NSString).appendingPathComponent("%(title)s.%(ext)s"),
+                "--no-playlist",
+                "--concurrent-fragments", "4",
+                "--progress",
+                "--newline",
+                urlString
+            ]
+
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = pipe
+
+            // Read output for progress updates
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else { return }
+                let lines = output.components(separatedBy: .newlines)
+                for line in lines {
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    if trimmed.contains("[download]") && trimmed.contains("%") {
+                        // Parse percentage: "[download]  45.2% of ..."
+                        let cleaned = trimmed.replacingOccurrences(of: "[download]", with: "").trimmingCharacters(in: .whitespaces)
+                        if let pctEnd = cleaned.firstIndex(of: "%") {
+                            let pctStr = cleaned[cleaned.startIndex..<pctEnd].trimmingCharacters(in: .whitespaces)
+                            if let pct = Double(pctStr) {
+                                DispatchQueue.main.async {
+                                    self?.state.downloadProgress = pct / 100.0
+                                    self?.state.downloadStatus = "Downloading… \(Int(pct))%"
+                                }
+                            }
+                        }
+                    } else if trimmed.contains("[Merger]") || trimmed.contains("[Merging]") {
+                        DispatchQueue.main.async {
+                            self?.state.downloadProgress = 0.95
+                            self?.state.downloadStatus = "Merging audio and video…"
+                        }
+                    }
+                }
+            }
+
+            do {
+                try task.run()
+                task.waitUntilExit()
+                pipe.fileHandleForReading.readabilityHandler = nil
+
+                if task.terminationStatus == 0 {
+                    DispatchQueue.main.async {
+                        self?.state.downloadProgress = 1.0
+                        self?.state.downloadStatus = "Download complete! Processing…"
+                        self?.state.youtubeURL = ""
+                        self?.state.isDownloading = false
+
+                        // Find the newly downloaded file and process it to HEVC .mov
+                        let videos = VideoLibrary.shared.videoFiles()
+                        if let newest = videos.last {
+                            self?.processAndImportVideo(sourceURL: newest)
+                        } else {
+                            self?.state.downloadProgress = 0
+                            self?.state.downloadStatus = ""
+                            self?.state.refresh()
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self?.state.isDownloading = false
+                        self?.state.downloadStatus = "Download failed"
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            self?.state.downloadStatus = ""
+                        }
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self?.state.isDownloading = false
+                    self?.state.downloadStatus = "Error: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private static func findExecutable(_ name: String) -> String? {
+        let paths = [
+            "/opt/homebrew/bin/\(name)",
+            "/usr/local/bin/\(name)",
+            "/usr/bin/\(name)"
+        ]
+        for p in paths {
+            if FileManager.default.fileExists(atPath: p) { return p }
+        }
+        return nil
     }
 
     private func pickVideo(title: String) -> URL? {

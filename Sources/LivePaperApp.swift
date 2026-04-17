@@ -39,6 +39,7 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         registerBundledFonts()
         NSApp.setActivationPolicy(.regular)
+        setupEditMenu()
 
         dashboard = DashboardController(app: self)
         statusBar = StatusBarController(app: self)
@@ -105,7 +106,8 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
         occlusionObservers.removeAll()
         for screen in NSScreen.screens {
             let w = WallpaperWindow(screen: screen)
-            let v = VideoWallpaperView(frame: screen.frame, videoURL: currentVideoURL, volume: LivePaperConfig.shared.volume)
+            let v = VideoWallpaperView(frame: screen.frame, videoURL: currentVideoURL,
+                                       volume: LivePaperConfig.shared.volume)
             w.contentView = v; w.orderFront(nil)
             wallpaperWindows.append(w); videoViews.append(v)
             let obs = NotificationCenter.default.addObserver(
@@ -113,6 +115,8 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
             ) { [weak self] _ in self?.handleOcclusionChange() }
             occlusionObservers.append(obs)
         }
+        NSLog("LivePaper: setupWallpaper — created %d windows for %d screens",
+              wallpaperWindows.count, NSScreen.screens.count)
         // Re-apply battery mode to the freshly created views
         if pausedForBattery {
             for v in videoViews { v.pause() }
@@ -172,11 +176,17 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
 
     @objc func displayDidWake() {
         displaySleeping = false
+        NSLog("LivePaper: Display woke up — scheduling recovery")
         screensaverController?.completePendingLockActivation()
-        if pausedForSleep {
-            pausedForSleep = false
-            if !isPaused && !pausedForOcclusion && !(screensaverController?.isActive ?? false) {
-                for v in videoViews { v.resume() }
+
+        // Give the GPU a moment to come back after display sleep
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self else { return }
+            if self.pausedForSleep {
+                self.pausedForSleep = false
+                if !self.isPaused && !self.pausedForOcclusion && !(self.screensaverController?.isActive ?? false) {
+                    for v in self.videoViews { v.forceResume() }
+                }
             }
         }
     }
@@ -213,6 +223,21 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
         if isPaused { isPaused = false }
         statusBar?.updateNowPlaying()
         dashboard?.updateVideoLabel()
+    }
+
+    /// Re-load video on all players (equivalent to clicking the video in library again).
+    /// Lighter than fullRebuild — reuses existing AVQueuePlayer objects.
+    func reloadAllPlayers() {
+        guard hasVideo else { return }
+        let url = currentVideoURL
+        for v in videoViews { v.changeVideo(url: url) }
+    }
+
+    /// Nuclear option: tears down and rebuilds every player from scratch.
+    func rebuildAllPlayers() {
+        guard hasVideo else { return }
+        let url = currentVideoURL
+        for v in videoViews { v.fullRebuild(url: url) }
     }
 
     func pause() { isPaused = true; for v in videoViews { v.pause() } }
@@ -264,6 +289,20 @@ class LivePaperApp: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         dashboard?.show()
         return true
+    }
+
+    /// Creates a standard Edit menu so Cmd+V/C/X/A work in text fields.
+    private func setupEditMenu() {
+        let mainMenu = NSApp.mainMenu ?? NSMenu()
+        let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = editMenu
+        mainMenu.addItem(editItem)
+        NSApp.mainMenu = mainMenu
     }
 
     private func reorderWindows() {
