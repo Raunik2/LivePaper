@@ -81,6 +81,10 @@ struct DashboardView: View {
                 actionButtons
                     .padding(.bottom, 24)
 
+                sectionLabel("DOWNLOAD FROM YOUTUBE")
+                youtubeSection
+                    .padding(.bottom, 24)
+
                 sectionLabel("SETTINGS")
                 settingsCard
                     .padding(.bottom, 24)
@@ -265,7 +269,104 @@ struct DashboardView: View {
 
     private var actionButtons: some View {
         VStack(spacing: 12) {
-            // Progress Section — shown between library and buttons when active
+            Button(action: actions.chooseFile) {
+                HStack {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 16))
+                    Text("Choose Video File…")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(accentPurple.opacity(0.15))
+                .foregroundColor(accentPurple)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(accentPurple.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(state.isProcessing)
+            .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
+
+            Button(action: actions.browseMoewalls) {
+                HStack(spacing: 10) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 18, weight: .medium))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Browse More Live Wallpapers")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text("moewalls.com — free animated wallpapers")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(white: 0.50))
+                    }
+                    Spacer()
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .frame(height: 54)
+                .background(accentCyan.opacity(0.10))
+                .foregroundColor(accentCyan)
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(accentCyan.opacity(0.25), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
+        }
+    }
+
+    // MARK: - YouTube Download Section
+
+    private var youtubeSection: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "play.rectangle.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(Color.red)
+
+                TextField("Paste YouTube URL here…", text: Binding(
+                    get: { state.youtubeURL },
+                    set: { state.youtubeURL = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 13))
+
+                Button(action: { actions.downloadYouTube(state.youtubeURL) }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 14))
+                        Text("Download")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(height: 34)
+                    .background(Color.red.opacity(0.15))
+                    .foregroundColor(Color.red)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(state.youtubeURL.isEmpty || state.isDownloading)
+                .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
+            }
+            .padding(14)
+            .background(cardBg)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+            )
+
+            // Progress bar for download/processing
             if state.isDownloading || state.isProcessing {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
@@ -295,7 +396,6 @@ struct DashboardView: View {
                                     .frame(width: geo.size.width * CGFloat(state.downloadProgress), height: 6)
                                     .animation(.easeInOut(duration: 0.3), value: state.downloadProgress)
                             } else {
-                                // Indeterminate: pulsing bar
                                 RoundedRectangle(cornerRadius: 4)
                                     .fill(LinearGradient(colors: [accentPurple, accentCyan], startPoint: .leading, endPoint: .trailing))
                                     .frame(width: geo.size.width * 0.3, height: 6)
@@ -318,89 +418,7 @@ struct DashboardView: View {
                 )
             }
 
-            Button(action: actions.chooseFile) {
-                HStack {
-                    Image(systemName: "folder.fill")
-                        .font(.system(size: 16))
-                    Text("Choose Video File…")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(accentPurple.opacity(0.15))
-                .foregroundColor(accentPurple)
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(accentPurple.opacity(0.3), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(state.isProcessing)
-            .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
-
-            Button(action: actions.browseMoewalls) {
-                HStack {
-                    Image(systemName: "globe")
-                        .font(.system(size: 13))
-                    Text("Browse More Live Wallpapers")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 34)
-                .foregroundColor(Color(white: 0.65))
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
-
-            // YouTube Download
-            HStack(spacing: 10) {
-                Image(systemName: "play.rectangle.fill")
-                    .font(.system(size: 15))
-                    .foregroundColor(Color.red)
-
-                TextField("Paste YouTube URL here…", text: Binding(
-                    get: { state.youtubeURL },
-                    set: { state.youtubeURL = $0 }
-                ))
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 13))
-
-                Button(action: { actions.downloadYouTube(state.youtubeURL) }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .font(.system(size: 13))
-                        Text("Download")
-                            .font(.system(size: 13, weight: .semibold))
-                    }
-                    .padding(.horizontal, 14)
-                    .frame(height: 30)
-                    .background(Color.red.opacity(0.15))
-                    .foregroundColor(Color.red)
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(state.youtubeURL.isEmpty || state.isDownloading)
-                .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
-            }
-            .padding(12)
-            .background(cardBg)
-            .cornerRadius(10)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
-            )
-
-            Text("Larger videos will take longer to process.")
+            Text("Paste any YouTube URL — the video will be downloaded and auto-converted for LivePaper.")
                 .font(.system(size: 11))
                 .foregroundColor(Color.white.opacity(0.35))
                 .padding(.top, -4)
@@ -987,10 +1005,12 @@ class DashboardController: NSObject, NSWindowDelegate {
     }
 
     private static func findExecutable(_ name: String) -> String? {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
         let paths = [
             "/opt/homebrew/bin/\(name)",
             "/usr/local/bin/\(name)",
-            "/usr/bin/\(name)"
+            "/usr/bin/\(name)",
+            "\(home)/.livepaper/bin/\(name)"
         ]
         for p in paths {
             if FileManager.default.fileExists(atPath: p) { return p }

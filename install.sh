@@ -104,51 +104,56 @@ fi
 stop_spinner
 step_done 1 "Xcode CLI Tools"
 
-# ── Step 2: Homebrew ──────────────────────────────────────────
-start_spinner "Checking Homebrew..."
-if ! command -v brew &>/dev/null; then
-    stop_spinner
-    printf "   ${ARROW}  Installing Homebrew...\n"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    if [ -f /opt/homebrew/bin/brew ]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-    elif [ -f /usr/local/bin/brew ]; then
-        eval "$(/usr/local/bin/brew shellenv)"
+# ── Step 2: Dependencies (yt-dlp, ffmpeg) ─────────────────────
+LOCAL_BIN="$HOME/.livepaper/bin"
+mkdir -p "$LOCAL_BIN"
+
+NEED_YTDLP=false
+NEED_FFMPEG=false
+command -v yt-dlp &>/dev/null || [ -f "$LOCAL_BIN/yt-dlp" ] || NEED_YTDLP=true
+command -v ffmpeg &>/dev/null || [ -f "$LOCAL_BIN/ffmpeg" ] || NEED_FFMPEG=true
+
+if [ "$NEED_YTDLP" = true ] || [ "$NEED_FFMPEG" = true ]; then
+    if command -v brew &>/dev/null; then
+        # Homebrew available — use it (fast)
+        BREW_PKGS=""
+        [ "$NEED_YTDLP" = true ] && BREW_PKGS="$BREW_PKGS yt-dlp"
+        [ "$NEED_FFMPEG" = true ] && BREW_PKGS="$BREW_PKGS ffmpeg"
+        start_spinner "Installing$BREW_PKGS via Homebrew..."
+        brew install $BREW_PKGS &>/dev/null
+        stop_spinner
+        step_done 2 "Dependencies installed via Homebrew"
+    else
+        # No Homebrew — download standalone binaries (much faster)
+        if [ "$NEED_YTDLP" = true ]; then
+            start_spinner "Downloading yt-dlp..."
+            curl -sL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos" -o "$LOCAL_BIN/yt-dlp"
+            chmod +x "$LOCAL_BIN/yt-dlp"
+            stop_spinner
+        fi
+        if [ "$NEED_FFMPEG" = true ]; then
+            start_spinner "Downloading ffmpeg..."
+            curl -sL "https://evermeet.cx/ffmpeg/getrelease/zip" -o /tmp/lp_ffmpeg.zip
+            unzip -qo /tmp/lp_ffmpeg.zip -d "$LOCAL_BIN/" 2>/dev/null
+            rm -f /tmp/lp_ffmpeg.zip
+            stop_spinner
+            start_spinner "Downloading ffprobe..."
+            curl -sL "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip" -o /tmp/lp_ffprobe.zip
+            unzip -qo /tmp/lp_ffprobe.zip -d "$LOCAL_BIN/" 2>/dev/null
+            rm -f /tmp/lp_ffprobe.zip
+            stop_spinner
+        fi
+        step_done 2 "Dependencies installed to ~/.livepaper/bin"
     fi
-    step_done 2 "Homebrew installed"
-else
-    stop_spinner
-    step_skip "Homebrew"
-fi
-
-# ── Step 3: Install tools via Homebrew ────────────────────────
-BREW_INSTALL=""
-if ! command -v git-lfs &>/dev/null; then BREW_INSTALL="$BREW_INSTALL git-lfs"; fi
-if ! command -v yt-dlp &>/dev/null; then BREW_INSTALL="$BREW_INSTALL yt-dlp"; fi
-if ! command -v ffmpeg &>/dev/null; then BREW_INSTALL="$BREW_INSTALL ffmpeg"; fi
-
-if [ -n "$BREW_INSTALL" ]; then
-    printf "   ${ARROW}  Installing:${BOLD}$BREW_INSTALL${RESET}\n"
-    brew install $BREW_INSTALL 2>&1 | while IFS= read -r line; do
-        # Show only key brew lines
-        case "$line" in
-            *Fetching*|*Installing*|*Pouring*|*🍺*)
-                printf "   ${DIM}   %s${RESET}\n" "$line"
-                ;;
-        esac
-    done
-    step_done 3 "Dependencies (git-lfs, yt-dlp, ffmpeg)"
 else
     step_skip "Dependencies"
 fi
 
-git lfs install --skip-smudge &>/dev/null || true
-
 echo ""
-show_bar 3
+show_bar 2
 echo ""
 
-# ── Step 4: Download source ──────────────────────────────────
+# ── Step 3: Download source ──────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd 2>/dev/null || pwd)"
 if [ -d "$SCRIPT_DIR/Sources" ]; then
     SRC_DIR="$SCRIPT_DIR"
@@ -158,18 +163,13 @@ else
     TMP_DIR=$(mktemp -d)
     trap "rm -rf $TMP_DIR" EXIT
     git clone --depth 1 --filter=blob:none --no-checkout https://github.com/Raunik2/LivePaper.git "$TMP_DIR/LivePaper" 2>/dev/null
-    (cd "$TMP_DIR/LivePaper" && git checkout HEAD -- Sources/ LICENSE Fonts/ AppIcon.icns Videos/ 2>/dev/null) || true
+    (cd "$TMP_DIR/LivePaper" && git checkout HEAD -- Sources/ LICENSE Fonts/ AppIcon.icns 2>/dev/null) || true
     stop_spinner
-    step_done 4 "Source downloaded"
-
-    start_spinner "Downloading sample wallpapers..."
-    (cd "$TMP_DIR/LivePaper" && git lfs pull 2>/dev/null) || true
-    stop_spinner
-    step_done 4 "Sample wallpapers downloaded"
+    step_done 3 "Source downloaded"
     SRC_DIR="$TMP_DIR/LivePaper"
 fi
 
-# ── Step 5: Build ─────────────────────────────────────────────
+# ── Step 4: Build ─────────────────────────────────────────────
 cd "$SRC_DIR"
 
 APP="LivePaper.app"
@@ -185,11 +185,31 @@ swiftc Sources/*.swift -o "$APP/Contents/MacOS/LivePaper" \
   -Osize \
   -target arm64-apple-macosx15.0
 stop_spinner
-step_done 5 "Compiled successfully"
+step_done 4 "Compiled successfully"
 
 echo ""
-show_bar 5
+show_bar 4
 echo ""
+
+# ── Step 5: Sample Wallpapers ─────────────────────────────────
+VIDEOS_DIR="$HOME/Movies/LivePaper"
+mkdir -p "$VIDEOS_DIR"
+SAMPLE_VIDS=("anime-red-eye.mov" "doge-samurai.mov" "samurai-warrior.mov")
+VIDEOS_DOWNLOADED=0
+for vid in "${SAMPLE_VIDS[@]}"; do
+    if [ ! -f "$VIDEOS_DIR/$vid" ]; then
+        start_spinner "Downloading $vid..."
+        curl -sL "https://media.githubusercontent.com/media/Raunik2/LivePaper/main/Videos/$vid" -o "$VIDEOS_DIR/$vid" 2>/dev/null
+        FSIZE=$(stat -f%z "$VIDEOS_DIR/$vid" 2>/dev/null || echo 0)
+        if [ "$FSIZE" -lt 100000 ]; then rm -f "$VIDEOS_DIR/$vid"; else VIDEOS_DOWNLOADED=$((VIDEOS_DOWNLOADED + 1)); fi
+        stop_spinner
+    fi
+done
+if [ "$VIDEOS_DOWNLOADED" -gt 0 ]; then
+    step_done 5 "Downloaded $VIDEOS_DOWNLOADED sample wallpaper(s)"
+else
+    step_skip "Sample wallpapers"
+fi
 
 # ── Step 6: Bundle resources ──────────────────────────────────
 start_spinner "Bundling resources..."
@@ -207,22 +227,6 @@ fi
 # License
 [ -f "LICENSE" ] && cp LICENSE "$APP/Contents/Resources/"
 
-# Sample videos — skip Git LFS pointers (<100KB)
-VIDEOS_DIR="$HOME/Movies/LivePaper"
-mkdir -p "$VIDEOS_DIR"
-VIDEOS_COPIED=0
-if [ -d "Videos" ]; then
-  for v in Videos/*.mov Videos/*.mp4 Videos/*.m4v; do
-    [ -f "$v" ] || continue
-    FSIZE=$(stat -f%z "$v" 2>/dev/null || echo 0)
-    [ "$FSIZE" -lt 100000 ] && continue
-    BNAME=$(basename "$v")
-    if [ ! -f "$VIDEOS_DIR/$BNAME" ]; then
-      cp "$v" "$VIDEOS_DIR/"
-      VIDEOS_COPIED=$((VIDEOS_COPIED + 1))
-    fi
-  done
-fi
 
 # Info.plist
 PB=/usr/libexec/PlistBuddy
@@ -249,11 +253,7 @@ $PB -c "Add :CFBundleIconFile string AppIcon" "$PLIST"
 $PB -c "Add :NSHumanReadableCopyright string 'Copyright © 2026 Raunak Gupta. All rights reserved.'" "$PLIST"
 
 stop_spinner
-if [ "$VIDEOS_COPIED" -gt 0 ]; then
-    step_done 6 "Bundled resources + $VIDEOS_COPIED sample wallpaper(s)"
-else
-    step_done 6 "Resources bundled"
-fi
+step_done 6 "Resources bundled"
 
 # ── Step 7: Sign & Install ───────────────────────────────────
 start_spinner "Code signing & installing..."

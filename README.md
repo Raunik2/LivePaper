@@ -1,109 +1,51 @@
 # LivePaper
 
-**Live video wallpaper engine for macOS Tahoe.** Play any video as your desktop wallpaper with a Mond-style clock overlay, automatic screensaver/lock screen integration, and battery-aware power management.
+**Live video wallpapers for macOS Tahoe.**
 
 ![macOS](https://img.shields.io/badge/macOS-Tahoe%2016.0%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5-orange) ![License](https://img.shields.io/badge/License-MIT-green)
 
 ## Install
 
-Paste this in Terminal — it downloads, builds, installs, and launches LivePaper:
-
 ```bash
 curl -sL https://raw.githubusercontent.com/Raunik2/LivePaper/main/install.sh | bash
 ```
 
-That's it. No Gatekeeper warnings, no "Move to Bin" dialog, no manual setup.
+That's it — one command. No Homebrew needed, no Gatekeeper warnings.
 
-> **Requires:** macOS Tahoe (16.0+) and Xcode Command Line Tools (the script will prompt you to install them if missing).
+> **Requires:** macOS Tahoe 16.0+ and Xcode Command Line Tools (the installer handles everything else).
 
-### Alternative: Clone & Build
+## What You Get
 
-```bash
-git clone https://github.com/Raunik2/LivePaper.git && cd LivePaper && bash build3.sh
-```
+- **Any video as your wallpaper** — MP4, MOV, M4V with seamless looping
+- **Lock screen & screensaver** — your video plays natively on the lock screen
+- **YouTube download** — paste a URL in the dashboard to import wallpapers
+- **Mond clock overlay** — elegant clock widget on your desktop
+- **Battery smart** — lowers quality on battery, optionally pauses completely
+- **Multi-monitor** — works across all displays
+- **Menu bar control** — play, pause, change video from the status bar
 
-## Features
+## Getting Wallpapers
 
-- **Live Video Wallpaper** — Any MP4/MOV/M4V as desktop background with seamless looping
-- **Mond Clock Widget** — Elegant Anurati-font clock overlay with 3 styles (Classic, Classic + Seconds, Small)
-- **Lock Screen & Screensaver** — Video plays on lock screen via native macOS aerial injection
-- **System Aerial Injection** — Registers your video as a native macOS aerial in System Settings
-- **YouTube Download** — Paste a YouTube URL to download and import wallpapers directly
-- **Video Library** — Browse and switch between videos from `~/Movies/LivePaper/`
-- **Multi-Monitor** — Works across all connected displays
-- **Battery Optimized** — Lowers resolution + scale on battery; skips lock-screen sleep prevention; optional full pause
-- **Smart Pausing** — Auto-pauses when desktop is occluded or display sleeps
-- **Menu Bar + CLI** — Control from the status bar or via pipe commands
-- **GUI Dashboard** — Modern SwiftUI control panel
+1. **YouTube** — paste any URL in the dashboard
+2. **[moewalls.com](https://moewalls.com)** — click "Browse More Live Wallpapers" in the dashboard
+3. **Local files** — drop videos into `~/Movies/LivePaper/`
 
-## Usage
-
-Double-click LivePaper.app — the dashboard opens and the wallpaper starts.
-
-### Dashboard Controls
-
-- **Now Playing** — Play/pause, volume slider
-- **Video Library** — Click any thumbnail to switch wallpapers
-- **Choose Video File** — Pick any video; it's copied to the library automatically
-- **Settings** — Lock screen overlay, Mond clock style, pause on battery
-
-### Getting Videos
-
-1. **YouTube** — Paste a URL in the dashboard to download directly (requires `yt-dlp`)
-2. **moewalls.com** — Click "Browse moewalls.com" in the dashboard for animated wallpapers
-3. **Local files** — Drop `.mp4`/`.mov` files into `~/Movies/LivePaper/`
-4. **Choose Video File** — Pick any video from the dashboard; it's auto-converted to HEVC
-
-### CLI Control
+## CLI Control
 
 ```bash
 echo "pause"   > /tmp/livepaper.pipe
 echo "resume"  > /tmp/livepaper.pipe
 echo "change /path/to/video.mp4" > /tmp/livepaper.pipe
-echo "volume 50"    > /tmp/livepaper.pipe
-echo "dashboard"    > /tmp/livepaper.pipe
-echo "clock on"     > /tmp/livepaper.pipe
-echo "clock 0"      > /tmp/livepaper.pipe   # 0=Classic, 1=+Seconds, 2=Small
-echo "quit"         > /tmp/livepaper.pipe
+echo "volume 50"  > /tmp/livepaper.pipe
+echo "quit"       > /tmp/livepaper.pipe
 ```
 
-Launch with a specific video:
+## Build from Source
+
 ```bash
-open /Applications/LivePaper.app --args --video ~/Movies/LivePaper/my-wallpaper.mp4
-```
-
-## How It Works
-
-| Layer | Detail |
-|---|---|
-| **Video Playback** | `AVQueuePlayer` + `AVPlayerLooper` with hardware-accelerated `AVPlayerLayer` |
-| **Desktop Level** | Wallpaper windows at `desktopWindow + 1` — above real wallpaper, below everything else |
-| **Aerial Injection** | Writes to `~/Library/Application Support/com.apple.wallpaper/aerials/` to register as native aerial |
-| **Lock Screen** | Hides wallpaper windows on lock; system aerials (with injected video) plays natively |
-| **Battery Mode** | Caps decode at 1080p/5 Mbps, renders at 1x scale on battery; sleep prevention only on AC |
-| **Occlusion Pause** | Monitors `NSWindow.didChangeOcclusionStateNotification` to stop decode when hidden |
-
-## Project Structure
-
-```
-Sources/
-├── main.swift              # Entry point + macOS version gate
-├── Config.swift            # UserDefaults settings + font registration
-├── LivePaperApp.swift      # NSApplicationDelegate — core lifecycle
-├── VideoPlayer.swift       # AVQueuePlayer view + wallpaper window
-├── Screensaver.swift       # Screensaver & lock screen controller
-├── WindowPersistence.swift # Timer to keep wallpaper windows alive
-├── BatteryMonitor.swift    # AC/battery detection via IOKit
-├── MondClock.swift         # Mond clock widget + overlay window
-├── AerialsInjector.swift   # System aerial wallpaper injection
-├── VideoLibrary.swift      # ~/Movies/LivePaper/ management
-├── Dashboard.swift         # SwiftUI dashboard
-├── StatusBar.swift         # Menu bar controller
-└── CommandListener.swift   # Named pipe CLI listener
-build3.sh                   # Build, sign & install script
-install.sh                  # One-command installer (curl-friendly)
+git clone https://github.com/Raunik2/LivePaper.git && cd LivePaper && bash build3.sh
 ```
 
 ## License
 
-MIT License — Copyright (c) 2026 Raunak Gupta
+MIT — Copyright (c) 2026 Raunak Gupta
