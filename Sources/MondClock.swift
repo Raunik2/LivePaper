@@ -7,7 +7,7 @@ import AppKit
 func mondFont(size: CGFloat) -> NSFont {
     if let f = NSFont(name: "Anurati-Regular", size: size) { return f }
     if let f = NSFont(name: "Anurati", size: size) { return f }
-    return NSFont.systemFont(ofSize: size, weight: .ultraLight)
+    return NSFont.systemFont(ofSize: size, weight: .thin)
 }
 
 // MARK: - Mond Clock View
@@ -88,7 +88,7 @@ class MondClockView: NSView {
         y -= g1
         let dateStr = MondClockView.dateFmt.string(from: now).uppercased() + "."
         let dateAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: is_, weight: .light), .foregroundColor: mondLight,
+            .font: NSFont.systemFont(ofSize: is_, weight: .regular), .foregroundColor: mondLight,
             .kern: ik as NSNumber, .shadow: shd
         ]
         let dateAS = NSAttributedString(string: dateStr, attributes: dateAttrs)
@@ -100,7 +100,7 @@ class MondClockView: NSView {
         let timeFmt = showSeconds ? MondClockView.timeSecFmt : MondClockView.timeFmt
         let timeStr = "- " + timeFmt.string(from: now).uppercased() + " -"
         let timeAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: is_, weight: .light), .foregroundColor: mondLight,
+            .font: NSFont.systemFont(ofSize: is_, weight: .regular), .foregroundColor: mondLight,
             .kern: (large ? 2.5 : 2.0) as NSNumber, .shadow: shd
         ]
         let timeAS = NSAttributedString(string: timeStr, attributes: timeAttrs)

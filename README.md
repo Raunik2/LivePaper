@@ -6,13 +6,16 @@
 
 ## Install
 
+1. Open **Terminal** (press `⌘ Space`, type "Terminal", hit Enter)
+2. Paste this and hit Enter:
+
 ```bash
 curl -sL https://raw.githubusercontent.com/Raunik2/LivePaper/main/install.sh | bash
 ```
 
-That's it — one command. No Homebrew needed, no Gatekeeper warnings.
+3. Chill — it builds and installs automatically. Done in ~60 seconds.
 
-> **Requires:** macOS Tahoe 16.0+ and Xcode Command Line Tools (the installer handles everything else).
+That's it. No Homebrew needed, no Gatekeeper warnings, works from any directory.
 
 ## What You Get
 
@@ -26,9 +29,21 @@ That's it — one command. No Homebrew needed, no Gatekeeper warnings.
 
 ## Getting Wallpapers
 
-1. **YouTube** — paste any URL in the dashboard
-2. **[moewalls.com](https://moewalls.com)** — click "Browse More Live Wallpapers" in the dashboard
-3. **Local files** — drop videos into `~/Movies/LivePaper/`
+### From YouTube
+
+1. Search YouTube for: `live wallpaper for desktop`, `anime live wallpaper loop`, `4K nature live wallpaper`, or `aesthetic wallpaper engine`
+2. Copy the video URL
+3. Open the LivePaper dashboard (click the menu bar icon)
+4. Paste the URL in the **Download from YouTube** section and hit Download
+5. The video is automatically downloaded, converted, and set as your wallpaper
+
+### From moewalls.com
+
+Click **"Browse More Live Wallpapers"** in the dashboard — it opens [moewalls.com](https://moewalls.com) where you can download free animated wallpapers. Save the video, then drag it into the dashboard or put it in `~/Movies/LivePaper/`.
+
+### Local files
+
+Drop any `.mp4` / `.mov` / `.m4v` into `~/Movies/LivePaper/` — they show up in the Video Library automatically.
 
 ## CLI Control
 

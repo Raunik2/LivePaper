@@ -73,6 +73,22 @@ step_skip() {
 # ── Header ────────────────────────────────────────────────────
 clear 2>/dev/null || true
 echo ""
+printf "   ${DIM}⠀⠀⠀   ⠀⠀⣀⣴⣖⠒⠢⢄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⠤⢤⣄${RESET}\n"
+printf "   ${DIM}⠀⠀⠀⠀⣠⠞⠁⠑⠼⠃⢮⠇⠹⡄⠀⠀⠀⠀⠀⢀⣠⠴⢋⡡⠔⠒⠊⠈⣦⠀${RESET}\n"
+printf "   ${DIM}⠀⠀⢀⡴⠃⠀⢠⠒⠒⡄⢠⢢⡀⡷⠀⠀⠀⣠⣶⠿⠗⠊⠁⠀⠀⠀⠀⠀⠈⣦${RESET}\n"
+printf "   ${DIM}⠀⢀⡞⠀⠀⠀⠘⠶⠟⠁⠈⠉⢠⠃⣀⠴⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢹${RESET}\n"
+printf "   ${DIM}⠀⡞⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡧⠞⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣧${RESET}\n"
+printf "   ${DIM}⣸⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸${RESET}\n"
+printf "   ${DIM}⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠢⣄${RESET}\n"
+printf "   ${DIM}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠔⠒⠋⠙⠒⠢⢤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢦⡀${RESET}\n"
+printf "   ${DIM}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡆⢽${RESET}\n"
+printf "   ${DIM}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠀⡾${RESET}\n"
+printf "   ${DIM}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡞⢠⠇${RESET}\n"
+printf "   ${DIM}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⢿⣿⣿⣿⣿⣿⠿⣏⠈⠑⢦⡀⠀⢀⣠⠤⠤⠤⢤⣀⠀⠀⢀⠁⡼${RESET}\n"
+printf "   ${DIM}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠁⡴⢋⠷⣄⠀⢙⣴⣯⣤⣤⣄⣀⣀⣈⠓⣄⢈⡼${RESET}\n"
+printf "   ${DIM}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⡏⠴⣻⠞⠁⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡷⠀⠀⠀⠀⠀⠀⠀⣰${RESET}\n"
+printf "   ${DIM}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠛⠁⠀⠀⠈⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇⠀⠀⠀⠀⠀⠀⢠⠃${RESET}\n"
+echo ""
 printf "   ${BOLD}${MAGENTA}╭─────────────────────────────────────╮${RESET}\n"
 printf "   ${BOLD}${MAGENTA}│${RESET}  ${BOLD}${WHITE}  ◆  LivePaper Installer  ◆  ${RESET}  ${BOLD}${MAGENTA}│${RESET}\n"
 printf "   ${BOLD}${MAGENTA}│${RESET}  ${DIM}    Live video wallpapers for     ${RESET}  ${BOLD}${MAGENTA}│${RESET}\n"
@@ -96,7 +112,7 @@ start_spinner "Checking Xcode CLI Tools..."
 if ! command -v swiftc &>/dev/null; then
     stop_spinner
     printf "   ${ARROW}  Installing Xcode Command Line Tools...\n"
-    xcode-select --install 2>/dev/null || true
+    xcode-select --install 2>/dev/null </dev/null || true
     echo ""
     printf "   ${YELLOW}⏳ Complete the Xcode CLT dialog, then re-run this script.${RESET}\n"
     exit 1
@@ -120,7 +136,7 @@ if [ "$NEED_YTDLP" = true ] || [ "$NEED_FFMPEG" = true ]; then
         [ "$NEED_YTDLP" = true ] && BREW_PKGS="$BREW_PKGS yt-dlp"
         [ "$NEED_FFMPEG" = true ] && BREW_PKGS="$BREW_PKGS ffmpeg"
         start_spinner "Installing$BREW_PKGS via Homebrew..."
-        brew install $BREW_PKGS &>/dev/null
+        brew install $BREW_PKGS </dev/null &>/dev/null || true
         stop_spinner
         step_done 2 "Dependencies installed via Homebrew"
     else
@@ -162,8 +178,8 @@ else
     start_spinner "Downloading source code..."
     TMP_DIR=$(mktemp -d)
     trap "rm -rf $TMP_DIR" EXIT
-    git clone --depth 1 --filter=blob:none --no-checkout https://github.com/Raunik2/LivePaper.git "$TMP_DIR/LivePaper" 2>/dev/null
-    (cd "$TMP_DIR/LivePaper" && git checkout HEAD -- Sources/ LICENSE Fonts/ AppIcon.icns 2>/dev/null) || true
+    git clone --depth 1 --filter=blob:none --no-checkout https://github.com/Raunik2/LivePaper.git "$TMP_DIR/LivePaper" </dev/null 2>/dev/null
+    (cd "$TMP_DIR/LivePaper" && git checkout HEAD -- Sources/ LICENSE Fonts/ AppIcon.icns </dev/null 2>/dev/null) || true
     stop_spinner
     step_done 3 "Source downloaded"
     SRC_DIR="$TMP_DIR/LivePaper"
@@ -265,7 +281,7 @@ step_done 6 "Resources bundled"
 
 # ── Step 7: Sign & Install ───────────────────────────────────
 start_spinner "Code signing & installing..."
-codesign --force --deep -s - "$APP" 2>/dev/null
+codesign --force --deep -s - "$APP" </dev/null 2>/dev/null
 rm -rf /Applications/LivePaper.app
 cp -R "$APP" /Applications/LivePaper.app
 xattr -cr /Applications/LivePaper.app 2>/dev/null
