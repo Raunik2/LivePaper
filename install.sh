@@ -227,8 +227,14 @@ fi
 # Info.plist
 PB=/usr/libexec/PlistBuddy
 PLIST="$APP/Contents/Info.plist"
-touch "$PLIST"
-$PB -c "Add :CFBundleName string LivePaper" "$PLIST"
+if [ ! -f "$PLIST" ]; then
+    cat > "$PLIST" << 'PLISTEOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict></dict></plist>
+PLISTEOF
+fi
+$PB -c "Add :CFBundleName string LivePaper" "$PLIST" 2>/dev/null
 $PB -c "Add :CFBundleDisplayName string LivePaper" "$PLIST"
 $PB -c "Add :CFBundleIdentifier string com.livepaper.app" "$PLIST"
 $PB -c "Add :CFBundleVersion string 3.0" "$PLIST"
@@ -275,4 +281,19 @@ echo ""
 open /Applications/LivePaper.app
 
 printf "   ${DIM}Look for the LivePaper icon in your menu bar.${RESET}\n"
+echo ""
+echo ""
+printf "          ${DIM}⠀⠀⠀⠀⠀⢀⣀⣤⣤⣤⣤⣀⡀${RESET}\n"
+printf "          ${DIM}⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄${RESET}\n"
+printf "          ${DIM}⠀⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧${RESET}\n"
+printf "          ${DIM}⠀⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇${RESET}\n"
+printf "          ${DIM}⠀⣿⣿⣿⣿⣿⣿⡟⠋⠙⢿⣿⣿⣿⣿⣿⡇${RESET}\n"
+printf "          ${RED}⠀⣿⣿⣿⣿⣿⡿⠀⠀♥⠀⠹⣿⣿⣿⣿⣿${RESET}\n"
+printf "          ${RED}⠀⠸⣿⣿⣿⣿⡇⠀⠀⠀⠀⢀⣿⣿⣿⣿⠇${RESET}\n"
+printf "          ${RED}⠀⠀⠙⣿⣿⣿⣿⣦⣀⣀⣴⣿⣿⣿⣿⠋${RESET}\n"
+printf "          ${RED}⠀⠀⠀⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁${RESET}\n"
+printf "          ${DIM}⠀⠀⠀⠀⠀⠀⠉⠛⠻⠛⠛⠉${RESET}\n"
+echo ""
+printf "     ${BOLD}${MAGENTA}Made with ♥ by Raunak Gupta${RESET}\n"
+printf "     ${CYAN}https://linkedin.com/in/raunak5525/${RESET}\n"
 echo ""
