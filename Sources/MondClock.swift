@@ -82,31 +82,32 @@ class MondClockView: NSView {
         let g1: CGFloat = large ? 18 : 12
         let g2: CGFloat = large ? 16 : 10
         let totalH = daySz.height + g1 + is_ * 1.4 + g2 + is_ * 1.4
+
         var y = bounds.midY + totalH / 2 - daySz.height
         dayAS.draw(at: NSPoint(x: cx - daySz.width / 2, y: y))
 
         y -= g1
         let dateStr = MondClockView.dateFmt.string(from: now).uppercased() + "."
         let dateAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: is_, weight: .regular), .foregroundColor: mondLight,
+            .font: NSFont.systemFont(ofSize: is_, weight: .semibold), .foregroundColor: mondWhite,
             .kern: ik as NSNumber, .shadow: shd
         ]
         let dateAS = NSAttributedString(string: dateStr, attributes: dateAttrs)
         let dateSz = dateAS.size()
         y -= dateSz.height
-        dateAS.draw(at: NSPoint(x: cx - dateSz.width / 2, y: y))
 
-        y -= g2
         let timeFmt = showSeconds ? MondClockView.timeSecFmt : MondClockView.timeFmt
         let timeStr = "- " + timeFmt.string(from: now).uppercased() + " -"
         let timeAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: is_, weight: .regular), .foregroundColor: mondLight,
+            .font: NSFont.systemFont(ofSize: is_, weight: .semibold), .foregroundColor: mondWhite,
             .kern: (large ? 2.5 : 2.0) as NSNumber, .shadow: shd
         ]
         let timeAS = NSAttributedString(string: timeStr, attributes: timeAttrs)
         let timeSz = timeAS.size()
-        y -= timeSz.height
-        timeAS.draw(at: NSPoint(x: cx - timeSz.width / 2, y: y))
+        let timeY = y - g2 - timeSz.height
+
+        dateAS.draw(at: NSPoint(x: cx - dateSz.width / 2, y: y))
+        timeAS.draw(at: NSPoint(x: cx - timeSz.width / 2, y: timeY))
     }
 
     deinit { timer?.invalidate() }
