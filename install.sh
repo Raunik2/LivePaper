@@ -169,6 +169,10 @@ else
     SRC_DIR="$TMP_DIR/LivePaper"
 fi
 
+echo ""
+show_bar 3
+echo ""
+
 # ── Step 4: Build ─────────────────────────────────────────────
 cd "$SRC_DIR"
 
@@ -211,6 +215,10 @@ else
     step_skip "Sample wallpapers"
 fi
 
+echo ""
+show_bar 5
+echo ""
+
 # ── Step 6: Bundle resources ──────────────────────────────────
 start_spinner "Bundling resources..."
 
@@ -238,19 +246,19 @@ if [ ! -f "$PLIST" ]; then
 <plist version="1.0"><dict></dict></plist>
 PLISTEOF
 fi
-$PB -c "Add :CFBundleName string LivePaper" "$PLIST" 2>/dev/null
-$PB -c "Add :CFBundleDisplayName string LivePaper" "$PLIST"
-$PB -c "Add :CFBundleIdentifier string com.livepaper.app" "$PLIST"
-$PB -c "Add :CFBundleVersion string 3.0" "$PLIST"
-$PB -c "Add :CFBundleShortVersionString string 3.0" "$PLIST"
-$PB -c "Add :CFBundlePackageType string APPL" "$PLIST"
-$PB -c "Add :CFBundleExecutable string LivePaper" "$PLIST"
-$PB -c "Add :CFBundleInfoDictionaryVersion string 6.0" "$PLIST"
-$PB -c "Add :LSMinimumSystemVersion string 16.0" "$PLIST"
-$PB -c "Add :NSHighResolutionCapable bool true" "$PLIST"
-$PB -c "Add :LSApplicationCategoryType string public.app-category.utilities" "$PLIST"
-$PB -c "Add :CFBundleIconFile string AppIcon" "$PLIST"
-$PB -c "Add :NSHumanReadableCopyright string 'Copyright © 2026 Raunak Gupta. All rights reserved.'" "$PLIST"
+$PB -c "Add :CFBundleName string LivePaper" "$PLIST" 2>/dev/null || true
+$PB -c "Add :CFBundleDisplayName string LivePaper" "$PLIST" 2>/dev/null || true
+$PB -c "Add :CFBundleIdentifier string com.livepaper.app" "$PLIST" 2>/dev/null || true
+$PB -c "Add :CFBundleVersion string 3.0" "$PLIST" 2>/dev/null || true
+$PB -c "Add :CFBundleShortVersionString string 3.0" "$PLIST" 2>/dev/null || true
+$PB -c "Add :CFBundlePackageType string APPL" "$PLIST" 2>/dev/null || true
+$PB -c "Add :CFBundleExecutable string LivePaper" "$PLIST" 2>/dev/null || true
+$PB -c "Add :CFBundleInfoDictionaryVersion string 6.0" "$PLIST" 2>/dev/null || true
+$PB -c "Add :LSMinimumSystemVersion string 16.0" "$PLIST" 2>/dev/null || true
+$PB -c "Add :NSHighResolutionCapable bool true" "$PLIST" 2>/dev/null || true
+$PB -c "Add :LSApplicationCategoryType string public.app-category.utilities" "$PLIST" 2>/dev/null || true
+$PB -c "Add :CFBundleIconFile string AppIcon" "$PLIST" 2>/dev/null || true
+$PB -c "Add :NSHumanReadableCopyright string 'Copyright © 2026 Raunak Gupta. All rights reserved.'" "$PLIST" 2>/dev/null || true
 
 stop_spinner
 step_done 6 "Resources bundled"
