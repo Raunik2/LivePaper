@@ -17,6 +17,16 @@ curl -sL https://raw.githubusercontent.com/Raunik2/LivePaper/main/install.sh | b
 
 That's it. No Homebrew needed, no Gatekeeper warnings, works from any directory.
 
+## Usage
+
+LivePaper installs to `/Applications` like any regular app — open it from **Launchpad**, **Spotlight** (`⌘ Space` → type "LivePaper"), or directly from the **Applications** folder.
+
+Once running, LivePaper lives in your **menu bar**. Click the icon to access controls:
+
+![LivePaper menu bar](assets/menubar.png)
+
+From here you can open the dashboard, pause/resume the wallpaper, or quit the app.
+
 ## What You Get
 
 - **Any video as your wallpaper** — MP4, MOV, M4V with seamless looping
