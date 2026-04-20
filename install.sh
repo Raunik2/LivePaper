@@ -121,6 +121,8 @@ stop_spinner
 step_done 1 "Xcode CLI Tools"
 
 # ── Step 2: Dependencies (yt-dlp, ffmpeg) ─────────────────────
+printf "   ${YELLOW}⚠  Download time depends on your internet connection${RESET}\n"
+echo ""
 LOCAL_BIN="$HOME/.livepaper/bin"
 mkdir -p "$LOCAL_BIN"
 
@@ -142,22 +144,19 @@ if [ "$NEED_YTDLP" = true ] || [ "$NEED_FFMPEG" = true ]; then
     else
         # No Homebrew — download standalone binaries (much faster)
         if [ "$NEED_YTDLP" = true ]; then
-            start_spinner "Downloading yt-dlp..."
-            curl -sL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos" -o "$LOCAL_BIN/yt-dlp"
+            printf "   ${ARROW}  Downloading yt-dlp...\n"
+            curl -L# "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos" -o "$LOCAL_BIN/yt-dlp" 2>&1 | sed 's/^/      /'
             chmod +x "$LOCAL_BIN/yt-dlp"
-            stop_spinner
         fi
         if [ "$NEED_FFMPEG" = true ]; then
-            start_spinner "Downloading ffmpeg..."
-            curl -sL "https://evermeet.cx/ffmpeg/getrelease/zip" -o /tmp/lp_ffmpeg.zip
+            printf "   ${ARROW}  Downloading ffmpeg...\n"
+            curl -L# "https://evermeet.cx/ffmpeg/getrelease/zip" -o /tmp/lp_ffmpeg.zip 2>&1 | sed 's/^/      /'
             unzip -qo /tmp/lp_ffmpeg.zip -d "$LOCAL_BIN/" 2>/dev/null
             rm -f /tmp/lp_ffmpeg.zip
-            stop_spinner
-            start_spinner "Downloading ffprobe..."
-            curl -sL "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip" -o /tmp/lp_ffprobe.zip
+            printf "   ${ARROW}  Downloading ffprobe...\n"
+            curl -L# "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip" -o /tmp/lp_ffprobe.zip 2>&1 | sed 's/^/      /'
             unzip -qo /tmp/lp_ffprobe.zip -d "$LOCAL_BIN/" 2>/dev/null
             rm -f /tmp/lp_ffprobe.zip
-            stop_spinner
         fi
         step_done 2 "Dependencies installed to ~/.livepaper/bin"
     fi

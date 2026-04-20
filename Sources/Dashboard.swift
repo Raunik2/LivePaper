@@ -581,7 +581,7 @@ class DashboardController: NSObject, NSWindowDelegate {
         )
         window!.title = "LivePaper"
         window!.isReleasedWhenClosed = false
-        window!.level = .floating
+        window!.level = .normal
         window!.appearance = NSAppearance(named: .darkAqua)
         window!.delegate = self
         window!.titlebarAppearsTransparent = true
