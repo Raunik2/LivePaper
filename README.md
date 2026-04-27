@@ -4,6 +4,8 @@
 
 ![macOS](https://img.shields.io/badge/macOS-Tahoe%2016.0%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5-orange) ![License](https://img.shields.io/badge/License-MIT-green)
 
+https://github.com/Raunik2/LivePaper/raw/main/assets/demo.mp4
+
 ## Install
 
 1. Open **Terminal** (press `⌘ Space`, type "Terminal", hit Enter)
